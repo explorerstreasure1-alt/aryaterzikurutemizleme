@@ -1,0 +1,215 @@
+@import "tailwindcss";
+
+/* ===== TURQUOISE ROSE THEME ===== */
+:root {
+  --color-turquoise: #0d9488;
+  --color-turquoise-light: #14b8a6;
+  --color-turquoise-dark: #0f766e;
+  --color-rose: #e11d48;
+  --color-rose-light: #fb7185;
+  --color-rose-dark: #be123c;
+  --color-cream: #fefcf5;
+  --color-gold: #f59e0b;
+}
+
+/* Rose pattern overlay for turquoise theme */
+.rose-pattern-bg {
+  position: relative;
+}
+
+.rose-pattern-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  background-image: 
+    radial-gradient(circle at 20% 30%, #e11d48 2px, transparent 2px),
+    radial-gradient(circle at 80% 20%, #e11d48 3px, transparent 3px),
+    radial-gradient(circle at 40% 70%, #e11d48 1.5px, transparent 1.5px),
+    radial-gradient(circle at 70% 80%, #e11d48 2.5px, transparent 2.5px),
+    radial-gradient(circle at 10% 60%, #e11d48 2px, transparent 2px),
+    radial-gradient(circle at 90% 50%, #e11d48 1.5px, transparent 1.5px),
+    radial-gradient(circle at 50% 10%, #e11d48 2px, transparent 2px),
+    radial-gradient(circle at 60% 40%, #e11d48 3px, transparent 3px),
+    radial-gradient(circle at 30% 90%, #e11d48 1.5px, transparent 1.5px),
+    radial-gradient(circle at 85% 70%, #e11d48 2px, transparent 2px);
+  background-size: 120px 120px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.rose-pattern-bg > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Dark mode rose pattern */
+.dark .rose-pattern-bg::before {
+  opacity: 0.06;
+  background-image: 
+    radial-gradient(circle at 20% 30%, #fb7185 2px, transparent 2px),
+    radial-gradient(circle at 80% 20%, #fb7185 3px, transparent 3px),
+    radial-gradient(circle at 40% 70%, #fb7185 1.5px, transparent 1.5px),
+    radial-gradient(circle at 70% 80%, #fb7185 2.5px, transparent 2.5px),
+    radial-gradient(circle at 10% 60%, #fb7185 2px, transparent 2px),
+    radial-gradient(circle at 90% 50%, #fb7185 1.5px, transparent 1.5px),
+    radial-gradient(circle at 50% 10%, #fb7185 2px, transparent 2px),
+    radial-gradient(circle at 60% 40%, #fb7185 3px, transparent 3px),
+    radial-gradient(circle at 30% 90%, #fb7185 1.5px, transparent 1.5px),
+    radial-gradient(circle at 85% 70%, #fb7185 2px, transparent 2px);
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fade-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes scale-up {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(100px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-scale-up {
+  animation: scale-up 0.4s ease-out;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.4s ease-out;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* ===== RESPONSIVE UTILITIES ===== */
+@media (max-width: 640px) {
+  .container-padding { padding-left: 1rem; padding-right: 1rem; }
+  .text-responsive-hero { font-size: 2rem; }
+  .text-responsive-title { font-size: 1.25rem; }
+  .text-responsive-body { font-size: 0.875rem; }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .container-padding { padding-left: 1.5rem; padding-right: 1.5rem; }
+  .text-responsive-hero { font-size: 3rem; }
+  .text-responsive-title { font-size: 1.5rem; }
+  .text-responsive-body { font-size: 1rem; }
+}
+
+@media (min-width: 1025px) {
+  .container-padding { padding-left: 2rem; padding-right: 2rem; }
+  .text-responsive-hero { font-size: 4rem; }
+  .text-responsive-title { font-size: 1.875rem; }
+  .text-responsive-body { font-size: 1rem; }
+}
+
+/* ===== CONTRAST FIXES ===== */
+/* Ensure text on white bg is properly dark */
+.bg-white, .bg-white\/90, .bg-white\/80 {
+  color: #0f172a;
+}
+
+/* Ensure dark mode text is properly light */
+.dark .bg-slate-900, .dark .bg-slate-950 {
+  color: #f1f5f9;
+}
+
+/* ===== SCROLLBAR STYLING ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0d9488;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0f766e;
+}
+
+/* ===== DRAG & DROP ZONE ===== */
+.drop-zone {
+  border: 2px dashed #0d9488;
+  border-radius: 1rem;
+  background: rgba(13, 148, 136, 0.03);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.drop-zone:hover,
+.drop-zone.drag-over {
+  background: rgba(13, 148, 136, 0.08);
+  border-color: #14b8a6;
+  transform: scale(1.01);
+}
+
+.drop-zone.drag-over {
+  background: rgba(13, 148, 136, 0.12);
+  border-color: #0d9488;
+  box-shadow: 0 0 20px rgba(13, 148, 136, 0.15);
+}
+
+/* ===== RESPONSIVE TABLE ===== */
+@media (max-width: 768px) {
+  .responsive-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .responsive-table table {
+    width: 100%;
+    min-width: 600px;
+  }
+}
+
+/* ===== NEEDLE LOGO ANIMATION ===== */
+.needle-logo {
+  animation: float 3s ease-in-out infinite;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.dark .needle-logo {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
