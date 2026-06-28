@@ -8,12 +8,10 @@ import {
   ARYA_WHATSAPP_PHONE 
 } from "./utils";
 import { 
-  Sparkles, 
   Clock, 
   User, 
   Phone, 
   Share2, 
-  Info, 
   Gift, 
   X, 
   CheckCircle2, 
@@ -23,10 +21,7 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Flame, 
-  Layers, 
-  Calendar,
   Lock,
-  ExternalLink
 } from "lucide-react";
 
 interface Campaign {
@@ -50,6 +45,19 @@ interface Prize {
   codePrefix: string;
 }
 
+interface TimerData {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  totalSeconds: number;
+  status?: string;
+}
+
+function formatTimerDisplay(t: TimerData): string {
+  return `${String(t.days).padStart(2, "0")}:${String(t.hours).padStart(2, "0")}:${String(t.minutes).padStart(2, "0")}:${String(t.seconds).padStart(2, "0")}`;
+}
+
 export default function UserHomePage() {
   const [campaignsList, setCampaignsList] = useState<Campaign[]>([]);
   const [filter, setFilter] = useState<"all" | "ongoing" | "ending_soon">("all");
@@ -60,20 +68,19 @@ export default function UserHomePage() {
   // Carousel slider indexes
   const [carouselIndexes, setCarouselIndexes] = useState<Record<number, number>>({});
 
-  // Countdown timers
-  const [timeRemaining, setTimeRemaining] = useState<Record<number, {
-    days: number; hours: number; minutes: number; seconds: number; totalSeconds: number; status?: string;
-  }>>({});
+  const [timeRemaining, setTimeRemaining] = useState<Record<number, TimerData>>({});
 
   // Modals state
   const [activeJoinCampaign, setActiveJoinCampaign] = useState<Campaign | null>(null);
-  const [activeLearnDetails, setActiveLearnDetails] = useState<Campaign | null>(null);
   const [activeWheelCampaign, setActiveWheelCampaign] = useState<Campaign | null>(null);
   
   // High-urgency alert popup state (ending in < 1 hour)
   const [urgencyAlert, setUrgencyAlert] = useState<{ campaign: Campaign; timeString: string } | null>(null);
   // Use ref instead of state to avoid useEffect dependency cycle
   const hasShownUrgencyRef = useRef<Record<number, boolean>>({});
+  // Refs to clean up spin animation resources on unmount
+  const spinTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const spinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // State for form registrations
   const [firstName, setFirstName] = useState("");
@@ -83,7 +90,6 @@ export default function UserHomePage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<boolean>(false);
   const [joining, setJoining] = useState<boolean>(false);
-  const [registeredPromoCode, setRegisteredPromoCode] = useState<string | null>(null);
 
   // Wheel specific state
   const [isSpinning, setIsSpinning] = useState(false);
@@ -94,7 +100,6 @@ export default function UserHomePage() {
   const [spinState, setSpinState] = useState<"idle" | "drawn" | "claimed">("idle");
   const [shareBonusCode, setShareBonusCode] = useState<string | null>(null);
 
-  // Fetch all campaigns and register visitor cookie
   const fetchCampaigns = async () => {
     try {
       setLoading(true);
@@ -120,7 +125,6 @@ export default function UserHomePage() {
     setDarkMode(isDark);
   }, []);
 
-  // Theme toggle
   const toggleTheme = () => {
     const nextTheme = !darkMode;
     setDarkMode(nextTheme);
@@ -129,7 +133,7 @@ export default function UserHomePage() {
 
   // Calculate countdown timers for all campaigns
   const calculateTimers = useCallback(() => {
-    const newTimers: Record<number, any> = {};
+    const newTimers: Record<number, TimerData> = {};
     let hasNewUrgency = false;
     let urgencyCampaign: Campaign | null = null;
     let urgencyMinutes = 0;
@@ -139,13 +143,13 @@ export default function UserHomePage() {
       const start = new Date(c.startDate).getTime();
       const now = Date.now();
 
-      // Kampanya henüz başlamadıysa
+      // startDate henüz gelmediyse
       if (now < start) {
         newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: -1, status: "Başlamadı" };
         return;
       }
 
-      // end date geçersizse (NaN) hata koruması
+      // Tarih NaN koruması
       if (isNaN(end) || isNaN(start)) {
         newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: 0, status: "Hatalı Tarih" };
         return;
@@ -225,9 +229,13 @@ export default function UserHomePage() {
   const filteredCampaigns = campaignsList.filter((c) => {
     if (!c.active) return false;
     const timer = timeRemaining[c.id];
-    if (!timer) return true; // Show until timers resolve
+    if (!timer) {
+      // Timer henüz hesaplanmadı — sadece "all" filtresinde göster, diğerlerinde bekle
+      return filter === "all";
+    }
 
     if (filter === "ongoing") {
+      // Sadece aktif: başlamamış (-1) ve bitmiş (0) olanları gösterme
       return timer.totalSeconds > 0;
     }
     if (filter === "ending_soon") {
@@ -307,8 +315,7 @@ export default function UserHomePage() {
         setActionError(data.message || data.error || "Bir hata oluştu.");
       } else {
         setActionSuccess(true);
-        // Refresh campaign to show updated quotas
-        fetchCampaigns();
+        fetchCampaigns(); // Güncel kotaları göster
       }
     } catch (err) {
       setActionError("İletişim hatası oluştu, lütfen tekrar deneyin.");
@@ -326,6 +333,7 @@ export default function UserHomePage() {
     setSpinError(null);
     setSpinState("idle");
     setShareBonusCode(null);
+    setRotationDegrees(0); // Reset wheel rotation position
     setFirstName("");
     setLastName("");
     setFullPhone("");
@@ -376,18 +384,16 @@ export default function UserHomePage() {
         return;
       }
 
-      // 360 / length of prizes
       const segmentDegrees = 360 / prizesList.length;
-      // Center of that prize segment
       const prizeCenterAngle = (prizeIndex * segmentDegrees) + (segmentDegrees / 2);
-      
-      // Calculate rotation. Pointer is at 0/360 degrees (the top). 
-      // So to land on prizeCenterAngle, we rotate wheel by:
+
       const landingAngle = 360 - prizeCenterAngle;
-      // Let's do 5 full rotations + landing angle
       const finalRotation = (360 * 6) + landingAngle;
 
-      // Spin audio tick loops simulation
+      // Önceki spin kaynaklarını temizle
+      if (spinTickRef.current) clearInterval(spinTickRef.current);
+      if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+
       let tickCount = 0;
       const totalTicks = 45;
       const tickInterval = setInterval(() => {
@@ -396,13 +402,16 @@ export default function UserHomePage() {
           tickCount++;
         } else {
           clearInterval(tickInterval);
+          spinTickRef.current = null;
         }
       }, 90);
+      spinTickRef.current = tickInterval;
 
-      // Animate rotation
       setRotationDegrees(finalRotation);
 
-      setTimeout(() => {
+      spinTimeoutRef.current = setTimeout(() => {
+        spinTickRef.current = null;
+        spinTimeoutRef.current = null;
         setIsSpinning(false);
         setSelectedPrize(prize);
         setSpinState("drawn");
@@ -455,9 +464,16 @@ export default function UserHomePage() {
     }
   };
 
+  // Clean up spin animation resources on unmount
+  useEffect(() => {
+    return () => {
+      if (spinTickRef.current) clearInterval(spinTickRef.current);
+      if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+    };
+  }, []);
+
   // Scroll-lock + esc-close for modals
   const anyModalOpen = activeJoinCampaign !== null || activeWheelCampaign !== null;
-  const modalRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   useEffect(() => {
     const body = document.body;
@@ -487,15 +503,11 @@ export default function UserHomePage() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [activeJoinCampaign, activeWheelCampaign, isSpinning, anyModalOpen]);
 
-  // Social trigger for Paylaş & Kazan
   const handleShareAndGainBonus = async () => {
     if (!activeWheelCampaign) return;
     
-    // Construct WhatsApp share link to friend
     const shareText = `Arya Terzi Kuru Temizleme'de harika bir kampanya keşfettim! "${activeWheelCampaign.name}" kampanyasına hemen katıl, çarkı çevirip sürpriz indirimler ve ücretsiz hizmetler kazan! 🎁👇\n\nSiteyi ziyaret et: ${window.location.origin}`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-    
-    // Open share link
     window.open(whatsappUrl, "_blank");
 
     // Simulated network call to register bonus
@@ -527,7 +539,6 @@ export default function UserHomePage() {
   return (
     <div className={`min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-slate-100" : "bg-[#FEFCF5] text-teal-950 rose-pattern-bg"}`}>
       
-      {/* HEADER SECTION */}
       <header className={`sticky top-0 z-40 backdrop-blur-md border-b transition-all ${darkMode ? "bg-slate-900/90 border-teal-900" : "bg-white/90 border-teal-100"}`}>
         <div className="max-w-6xl mx-auto px-3 md:px-4 py-3 md:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 md:space-x-3 min-w-0">
@@ -566,7 +577,6 @@ export default function UserHomePage() {
         </div>
       </header>
 
-      {/* HERO HERO SÜPER BANNER */}
       <section className={`relative overflow-hidden py-10 md:py-20 border-b ${darkMode ? "bg-gradient-to-br from-slate-950 via-teal-950/20 to-slate-950 border-slate-900" : "bg-gradient-to-br from-[#FEFCF5] via-teal-50/30 to-[#f8f4e8] border-teal-50"}`}>
         <div className="max-w-4xl mx-auto text-center px-3 md:px-4 relative z-10">
           <div className="inline-flex items-center gap-1.5 md:gap-2 bg-teal-500/10 text-teal-600 px-2 md:px-3 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-3 md:mb-4 border border-teal-500/20">
@@ -672,7 +682,6 @@ export default function UserHomePage() {
                     </span>
                   </div>
 
-                  {/* DOUBLE IMAGE CAROUSEL OR STATIC BANNER IMAGE */}
                   <div className="relative h-52 sm:h-72 md:h-[450px] w-full overflow-hidden bg-slate-100 dark:bg-slate-950">
                     <img 
                       src={imagesList[currentImgIdx]} 
@@ -683,7 +692,6 @@ export default function UserHomePage() {
                       }}
                     />
 
-                    {/* Gradient Overlay for modern legibility */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
 
                     {/* Left/Right Carousel Controls (Only if > 1 image) */}
@@ -727,7 +735,6 @@ export default function UserHomePage() {
                       </div>
                     )}
 
-                    {/* FLOATING COUNTDOWN TIMER ON TOP OF BANNER */}
                     <div className="absolute right-2 sm:right-4 bottom-2 sm:bottom-4 z-20 bg-black/80 backdrop-blur-md p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl border border-white/10 text-white shadow-2xl">
                       <p className="text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-teal-400 mb-1 md:mb-1.5 flex items-center gap-1">
                         <Clock className="w-3 h-3 md:w-3.5 md:h-3.5 animate-spin text-amber-400" /> Kalan Zaman:
@@ -767,7 +774,6 @@ export default function UserHomePage() {
                     </div>
                   </div>
 
-                  {/* BANNER DESCRIPTION AND CTA ACTIONS */}
                   <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
                     <div className="space-y-1.5 sm:space-y-2">
                       <h3 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-teal-600 dark:text-teal-400">
@@ -786,23 +792,35 @@ export default function UserHomePage() {
                       </div>
                     )}
 
-                    {/* THE THREE POWERFUL ACTIONS */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                      {/* 1. KAMPANYAYA KATIL */}
-                      <button
-                        onClick={() => handleOpenJoin(campaign)}
-                        disabled={isQuotaFull || (timer && timer.totalSeconds <= 0)}
-                        className={`py-3 sm:py-4 px-4 sm:px-6 rounded-xl sm:rounded-2xl font-black text-[11px] sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg btn-base ${
-                          isQuotaFull || (timer && timer.totalSeconds <= 0)
-                            ? "bg-slate-300 text-slate-500 dark:bg-slate-800 dark:text-slate-600 cursor-not-allowed"
-                            : "bg-teal-600 hover:bg-teal-700 text-white hover:scale-[1.02] shadow-teal-600/20"
-                        }`}
-                      >
-                        <User className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-                        {isQuotaFull ? "Kontenjan Dolu" : "Kampanyaya Katıl"}
-                      </button>
+                      {/* KAMPANYAYA KATIL */}
+                      {(() => {
+                        const joinNotStarted = timer && timer.totalSeconds < 0;
+                        const joinExpired = timer && timer.totalSeconds === 0;
+                        const joinDisabled = isQuotaFull || joinNotStarted || joinExpired;
 
-                      {/* 2. DETAYLARI ÖĞREN */}
+                        let joinText = "Kampanyaya Katıl";
+                        if (isQuotaFull) joinText = "Kontenjan Dolu";
+                        else if (joinNotStarted) joinText = "Henüz Başlamadı";
+                        else if (joinExpired) joinText = "Süre Doldu";
+
+                        return (
+                          <button
+                            onClick={() => handleOpenJoin(campaign)}
+                            disabled={joinDisabled}
+                            className={`py-3 sm:py-4 px-4 sm:px-6 rounded-xl sm:rounded-2xl font-black text-[11px] sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg btn-base ${
+                              joinDisabled
+                                ? "bg-slate-300 text-slate-500 dark:bg-slate-800 dark:text-slate-600 cursor-not-allowed"
+                                : "bg-teal-600 hover:bg-teal-700 text-white hover:scale-[1.02] shadow-teal-600/20"
+                            }`}
+                          >
+                            <User className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                            {joinText}
+                          </button>
+                        );
+                      })()}
+
+                      {/* DETAYLARI ÖĞREN */}
                       <a
                         href={learnMoreUrl}
                         target="_blank"
@@ -813,19 +831,31 @@ export default function UserHomePage() {
                         Detayları Öğren
                       </a>
 
-                      {/* 3. ÇARKI ÇEVİR */}
-                      <button
-                        onClick={() => handleOpenWheel(campaign)}
-                        disabled={timer && timer.totalSeconds <= 0}
-                        className={`py-3 sm:py-4 px-4 sm:px-6 rounded-xl sm:rounded-2xl font-black text-[11px] sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg btn-base ${
-                          timer && timer.totalSeconds <= 0
-                            ? "bg-slate-300 text-slate-500 dark:bg-slate-800 dark:text-slate-600 cursor-not-allowed"
-                            : "bg-amber-500 hover:bg-amber-600 text-slate-950 hover:scale-[1.02] shadow-amber-500/20"
-                        }`}
-                      >
-                        <Gift className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-red-700" />
-                        Çarkı Çevir!
-                      </button>
+                      {/* ÇARKI ÇEVİR */}
+                      {(() => {
+                        const spinNotStarted = timer && timer.totalSeconds < 0;
+                        const spinExpired = timer && timer.totalSeconds === 0;
+                        const spinDisabled = spinNotStarted || spinExpired;
+
+                        let spinText = "Çarkı Çevir!";
+                        if (spinNotStarted) spinText = "Henüz Başlamadı";
+                        else if (spinExpired) spinText = "Süre Doldu";
+
+                        return (
+                          <button
+                            onClick={() => handleOpenWheel(campaign)}
+                            disabled={spinDisabled}
+                            className={`py-3 sm:py-4 px-4 sm:px-6 rounded-xl sm:rounded-2xl font-black text-[11px] sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg btn-base ${
+                              spinDisabled
+                                ? "bg-slate-300 text-slate-500 dark:bg-slate-800 dark:text-slate-600 cursor-not-allowed"
+                                : "bg-amber-500 hover:bg-amber-600 text-slate-950 hover:scale-[1.02] shadow-amber-500/20"
+                            }`}
+                          >
+                            <Gift className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-red-700" />
+                            {spinText}
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -852,7 +882,7 @@ export default function UserHomePage() {
       </footer>
 
 
-      {/* MODAL 1: KAMPANYAYA KATIL */}
+      {/* KAMPANYAYA KATIL MODAL */}
       {activeJoinCampaign && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 modal-backdrop animate-fade-in overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 text-slate-950 dark:text-slate-100 rounded-2xl sm:rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-teal-500/20 relative my-4 sm:my-8">
@@ -877,7 +907,7 @@ export default function UserHomePage() {
                       const t = timeRemaining[activeJoinCampaign.id];
                       if (t.totalSeconds < 0) return <span className="text-rose-500">Başlamadı</span>;
                       if (t.totalSeconds === 0) return <span className="text-rose-500">Süre Doldu</span>;
-                      return <span className="text-teal-600">{String(t.days).padStart(2,"0")}:{String(t.hours).padStart(2,"0")}:{String(t.minutes).padStart(2,"0")}:{String(t.seconds).padStart(2,"0")}</span>;
+                      return <span className="text-teal-600">{formatTimerDisplay(t)}</span>;
                     })()}
                   </div>
                 )}
@@ -1048,7 +1078,7 @@ export default function UserHomePage() {
       )}
 
 
-      {/* MODAL 2: INTERACTIVE WHEEL SPINNER */}
+      {/* ÇARK ÇEVİR MODAL */}
       {activeWheelCampaign && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 modal-backdrop overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 text-slate-950 dark:text-slate-100 rounded-2xl sm:rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-amber-500/20 relative my-4 sm:my-8">
@@ -1074,7 +1104,7 @@ export default function UserHomePage() {
                       const t = timeRemaining[activeWheelCampaign.id];
                       if (t.totalSeconds < 0) return <span className="text-rose-500">Başlamadı</span>;
                       if (t.totalSeconds === 0) return <span className="text-rose-500">Süre Doldu</span>;
-                      return <span className="text-teal-600">{String(t.days).padStart(2,"0")}:{String(t.hours).padStart(2,"0")}:{String(t.minutes).padStart(2,"0")}:{String(t.seconds).padStart(2,"0")}</span>;
+                      return <span className="text-teal-600">{formatTimerDisplay(t)}</span>;
                     })()}
                   </div>
                 )}
