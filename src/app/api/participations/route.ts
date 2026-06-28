@@ -19,9 +19,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { campaignId, firstName, lastName, fullPhone, phoneLastFour, cookieId } = body;
 
-    if (!campaignId || !firstName || !lastName || !fullPhone || !phoneLastFour) {
+    if (!campaignId || !firstName || !lastName || !phoneLastFour) {
       return NextResponse.json({ error: "Lütfen tüm zorunlu alanları doldurun." }, { status: 400 });
     }
+
+    // If fullPhone is not provided (simplified join), use phoneLastFour as placeholder
+    const resolvedFullPhone = fullPhone || `*******${phoneLastFour}`;
 
     // Get IP address
     const headersList = await headers();
@@ -67,7 +70,7 @@ export async function POST(req: NextRequest) {
           or(
             eq(participations.ipAddress, ipAddress),
             eq(participations.cookieId, cookieId || "never_matches"),
-            eq(participations.fullPhone, fullPhone)
+            eq(participations.fullPhone, resolvedFullPhone)
           )
         )
       );
@@ -86,9 +89,9 @@ export async function POST(req: NextRequest) {
 
     const newParticipation = await db.insert(participations).values({
       campaignId: parsedCampaignId,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      fullPhone: fullPhone.trim(),
+      firstName: firstName.trim().toUpperCase(),
+      lastName: lastName.trim().toUpperCase(),
+      fullPhone: resolvedFullPhone.trim(),
       phoneLastFour: phoneLastFour.trim(),
       ipAddress,
       cookieId: cookieId || "unknown_cookie",
