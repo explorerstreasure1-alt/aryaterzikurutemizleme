@@ -82,6 +82,7 @@ export default function UserHomePage() {
   const [phoneLastFour, setPhoneLastFour] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<boolean>(false);
+  const [joining, setJoining] = useState<boolean>(false);
   const [registeredPromoCode, setRegisteredPromoCode] = useState<string | null>(null);
 
   // Wheel specific state
@@ -245,25 +246,45 @@ export default function UserHomePage() {
     setPhoneLastFour("");
     setActionError(null);
     setActionSuccess(false);
+    setJoining(false);
   };
 
   // Submit join form
   const handleJoinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeJoinCampaign) return;
+    if (!activeJoinCampaign || joining) return;
     setActionError(null);
+    setJoining(true);
+
+    // Kampanya süre kontrolü — client-side
+    const timer = timeRemaining[activeJoinCampaign.id];
+    if (timer) {
+      if (timer.totalSeconds < 0) {
+        setActionError("Bu kampanya henüz başlamadı.");
+        setJoining(false);
+        return;
+      }
+      if (timer.totalSeconds === 0) {
+        setActionError("Bu kampanyanın süresi dolmuştur.");
+        setJoining(false);
+        return;
+      }
+    }
 
     // Validations
     if (!firstName.trim() || !lastName.trim()) {
       setActionError("Lütfen isim ve soyisminizi giriniz.");
+      setJoining(false);
       return;
     }
     if (fullPhone.replace(/\D/g, "").length < 10) {
       setActionError("Lütfen geçerli bir telefon numarası giriniz (en az 10 hane).");
+      setJoining(false);
       return;
     }
     if (phoneLastFour.replace(/\D/g, "").length !== 4) {
       setActionError("Telefon numaranızın son 4 hanesi doğrulamak için zorunludur.");
+      setJoining(false);
       return;
     }
 
@@ -291,6 +312,8 @@ export default function UserHomePage() {
       }
     } catch (err) {
       setActionError("İletişim hatası oluştu, lütfen tekrar deneyin.");
+    } finally {
+      setJoining(false);
     }
   };
 
@@ -841,8 +864,23 @@ export default function UserHomePage() {
             </button>
 
             <div className="p-4 sm:p-6 md:p-8">
-              <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-teal-500/10 text-teal-600 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold mb-3 sm:mb-4">
-                <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Kampanya Kayıt Formu
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-teal-500/10 text-teal-600 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold">
+                  <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Kampanya Kayıt Formu
+                </div>
+
+                {/* Join modal countdown */}
+                {timeRemaining[activeJoinCampaign.id] && (
+                  <div className="text-[10px] font-bold flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {(() => {
+                      const t = timeRemaining[activeJoinCampaign.id];
+                      if (t.totalSeconds < 0) return <span className="text-rose-500">Başlamadı</span>;
+                      if (t.totalSeconds === 0) return <span className="text-rose-500">Süre Doldu</span>;
+                      return <span className="text-teal-600">{String(t.days).padStart(2,"0")}:{String(t.hours).padStart(2,"0")}:{String(t.minutes).padStart(2,"0")}:{String(t.seconds).padStart(2,"0")}</span>;
+                    })()}
+                  </div>
+                )}
               </div>
 
               <h3 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight text-teal-600 mb-1.5 sm:mb-2">
@@ -852,112 +890,158 @@ export default function UserHomePage() {
                 Aşağıdaki alanları doldurarak bu kampanyadaki hakkınızı hemen rezerve edebilirsiniz. İndirim hakkınız anında sisteme tanımlanır.
               </p>
 
-              {!actionSuccess ? (
-                <form onSubmit={handleJoinSubmit} className="space-y-4">
-                  {actionError && (
-                    <div className="p-4 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold border border-rose-500/20 flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 shrink-0" />
-                      <span>{actionError}</span>
-                    </div>
-                  )}
+              {(() => {
+                const joinTimer = timeRemaining[activeJoinCampaign.id];
+                const joinExpired = !actionSuccess && joinTimer && joinTimer.totalSeconds <= 0;
 
-                  <div className="grid grid-cols-2 gap-3">
+                // Expired / not started warning
+                if (joinExpired) {
+                  return (
+                    <div className="p-6 text-center space-y-3">
+                      <div className="w-14 h-14 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto border border-rose-500/20">
+                        <AlertTriangle className="w-7 h-7" />
+                      </div>
+                      <h4 className="text-lg font-black text-rose-600">
+                        {joinTimer.totalSeconds < 0 ? "KAMPANYA HENÜZ BAŞLAMADI" : "KAMPANYA SÜRESİ DOLDU"}
+                      </h4>
+                      <p className="text-xs opacity-75">
+                        {joinTimer.totalSeconds < 0
+                          ? "Bu kampanya için kayıtlar henüz açılmamıştır. Başlama tarihini bekleyiniz."
+                          : "Bu kampanya için katılım süresi sona ermiştir. Yeni kampanyalarımızı takip ediniz."}
+                      </p>
+                      <button
+                        onClick={() => setActiveJoinCampaign(null)}
+                        className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase rounded-xl transition-all btn-base"
+                      >
+                        Kapat
+                      </button>
+                    </div>
+                  );
+                }
+
+                // Success state
+                if (actionSuccess) {
+                  return (
+                    <div className="text-center py-6 space-y-6">
+                      <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto border border-emerald-500/20">
+                        <CheckCircle2 className="w-10 h-10 animate-bounce" />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <h4 className="text-2xl font-black text-emerald-600">Tebrikler, Katıldınız!</h4>
+                        <p className="text-sm opacity-85 leading-relaxed px-4">
+                          Kaydınız başarıyla veritabanımıza eklenmiştir. WhatsApp üzerinden detaylı bilgi edinmek ve haklarınızı doğrulamak için aşağıdaki butonu kullanarak direkt yazabilirsiniz.
+                        </p>
+                      </div>
+
+                      <div className="p-4 bg-teal-50 dark:bg-slate-800 rounded-2xl border border-teal-100 dark:border-teal-900">
+                        <p className="text-[11px] uppercase font-bold opacity-75">Kampanya Detayı</p>
+                        <p className="text-base font-black text-teal-600">{activeJoinCampaign.name}</p>
+                        <p className="text-xs font-semibold mt-1 opacity-75">İsim: {firstName} {lastName}</p>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <a
+                          href={getWhatsAppUrl(ARYA_WHATSAPP_PHONE, `Merhaba Arya Terzi, "${activeJoinCampaign.name}" kampanyasına katıldım. Bilgilerimi doğrulayıp haklarımı almak istiyorum. İsim: ${firstName} ${lastName}, Tel son 4 hane: ${phoneLastFour}`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="py-4 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg text-center flex items-center justify-center gap-2 btn-base"
+                        >
+                          <Phone className="w-4 h-4" /> Hemen WhatsApp'tan Yaz
+                        </a>
+                        
+                        <button
+                          onClick={() => setActiveJoinCampaign(null)}
+                          className="py-3 px-6 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 font-bold text-xs uppercase rounded-2xl transition-all btn-base"
+                        >
+                          Kapat
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Default: show form with loading state
+                return (
+                  <form onSubmit={handleJoinSubmit} className="space-y-4">
+                    {actionError && (
+                      <div className="p-4 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold border border-rose-500/20 flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                        <span>{actionError}</span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Adınız</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          placeholder="Örn. Ahmet"
+                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Soyadınız</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          placeholder="Örn. Yılmaz"
+                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
+                        />
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Adınız</label>
+                      <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Telefon Numaranız</label>
+                      <input 
+                        type="tel" 
+                        required
+                        value={fullPhone}
+                        onChange={(e) => setFullPhone(e.target.value)}
+                        placeholder="Örn. 0555 123 45 67"
+                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
+                      />
+                      <p className="text-[10px] opacity-60 mt-1">İletişime geçmek ve WhatsApp doğrulaması için gereklidir.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Telefonun Son 4 Hanesi (Güvenlik)</label>
                       <input 
                         type="text" 
                         required
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        placeholder="Örn. Ahmet"
-                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
+                        maxLength={4}
+                        value={phoneLastFour}
+                        onChange={(e) => setPhoneLastFour(e.target.value.replace(/\D/g, ""))}
+                        placeholder="Örn. 4567"
+                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-mono font-black text-center text-lg tracking-widest input-field"
                       />
+                      <p className="text-[10px] opacity-60 mt-1">Çift katılımları ve hileyi önlemek amacıyla teyit amaçlı istenir.</p>
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Soyadınız</label>
-                      <input 
-                        type="text" 
-                        required
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        placeholder="Örn. Yılmaz"
-                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
-                      />
-                    </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Telefon Numaranız</label>
-                    <input 
-                      type="tel" 
-                      required
-                      value={fullPhone}
-                      onChange={(e) => setFullPhone(e.target.value)}
-                      placeholder="Örn. 0555 123 45 67"
-                      className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
-                    />
-                    <p className="text-[10px] opacity-60 mt-1">İletişime geçmek ve WhatsApp doğrulaması için gereklidir.</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Telefonun Son 4 Hanesi (Güvenlik)</label>
-                    <input 
-                      type="text" 
-                      required
-                      maxLength={4}
-                      value={phoneLastFour}
-                      onChange={(e) => setPhoneLastFour(e.target.value.replace(/\D/g, ""))}
-                      placeholder="Örn. 4567"
-                      className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-mono font-black text-center text-lg tracking-widest input-field"
-                    />
-                    <p className="text-[10px] opacity-60 mt-1">Çift katılımları ve hileyi önlemek amacıyla teyit amaçlı istenir.</p>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg hover:scale-[1.01] btn-base"
-                  >
-                    Katılımı Kaydet ve Rezervasyon Yap!
-                  </button>
-                </form>
-              ) : (
-                <div className="text-center py-6 space-y-6">
-                  <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto border border-emerald-500/20">
-                    <CheckCircle2 className="w-10 h-10 animate-bounce" />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h4 className="text-2xl font-black text-emerald-600">Tebrikler, Katıldınız!</h4>
-                    <p className="text-sm opacity-85 leading-relaxed px-4">
-                      Kaydınız başarıyla veritabanımıza eklenmiştir. WhatsApp üzerinden detaylı bilgi edinmek ve haklarınızı doğrulamak için aşağıdaki butonu kullanarak direkt yazabilirsiniz.
-                    </p>
-                  </div>
-
-                  <div className="p-4 bg-teal-50 dark:bg-slate-800 rounded-2xl border border-teal-100 dark:border-teal-900">
-                    <p className="text-[11px] uppercase font-bold opacity-75">Kampanya Detayı</p>
-                    <p className="text-base font-black text-teal-600">{activeJoinCampaign.name}</p>
-                    <p className="text-xs font-semibold mt-1 opacity-75">İsim: {firstName} {lastName}</p>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <a
-                      href={getWhatsAppUrl(ARYA_WHATSAPP_PHONE, `Merhaba Arya Terzi, "${activeJoinCampaign.name}" kampanyasına katıldım. Bilgilerimi doğrulayıp haklarımı almak istiyorum. İsim: ${firstName} ${lastName}, Tel son 4 hane: ${phoneLastFour}`)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="py-4 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg text-center flex items-center justify-center gap-2 btn-base"
-                    >
-                      <Phone className="w-4 h-4" /> Hemen WhatsApp'tan Yaz
-                    </a>
-                    
                     <button
-                      onClick={() => setActiveJoinCampaign(null)}
-                      className="py-3 px-6 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 font-bold text-xs uppercase rounded-2xl transition-all btn-base"
+                      type="submit"
+                      disabled={joining}
+                      className={`w-full py-4 font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg btn-base ${
+                        joining
+                          ? "bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed"
+                          : "bg-teal-600 hover:bg-teal-700 text-white hover:scale-[1.01]"
+                      }`}
                     >
-                      Kapat
+                      {joining ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          KAYDEDİLİYOR...
+                        </span>
+                      ) : "Katılımı Kaydet ve Rezervasyon Yap!"}
                     </button>
-                  </div>
-                </div>
-              )}
+                  </form>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -977,8 +1061,23 @@ export default function UserHomePage() {
             </button>
 
             <div className="p-4 sm:p-6 md:p-8 flex flex-col items-center">
-              <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-amber-500/10 text-amber-600 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold mb-3 sm:mb-4">
-                <Gift className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-500 animate-bounce" /> Arya Şans Çarkı Makinesi
+              <div className="flex items-center justify-between w-full mb-3 sm:mb-4">
+                <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-amber-500/10 text-amber-600 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold">
+                  <Gift className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-500 animate-bounce" /> Arya Şans Çarkı Makinesi
+                </div>
+
+                {/* Wheel modal countdown */}
+                {timeRemaining[activeWheelCampaign.id] && (
+                  <div className="text-[10px] font-bold flex items-center gap-1 shrink-0">
+                    <Clock className="w-3 h-3" />
+                    {(() => {
+                      const t = timeRemaining[activeWheelCampaign.id];
+                      if (t.totalSeconds < 0) return <span className="text-rose-500">Başlamadı</span>;
+                      if (t.totalSeconds === 0) return <span className="text-rose-500">Süre Doldu</span>;
+                      return <span className="text-teal-600">{String(t.days).padStart(2,"0")}:{String(t.hours).padStart(2,"0")}:{String(t.minutes).padStart(2,"0")}:{String(t.seconds).padStart(2,"0")}</span>;
+                    })()}
+                  </div>
+                )}
               </div>
 
               <h3 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight text-teal-600 mb-1 text-center">
@@ -988,6 +1087,35 @@ export default function UserHomePage() {
                 Admin tarafından tanımlanmış gerçek kazanç oranlı çarkımızı çevirin, indirim ve bedava hizmetleri anında yakalayın!
               </p>
 
+              {(() => {
+                const wheelTimer = timeRemaining[activeWheelCampaign.id];
+                const wheelExpired = wheelTimer && wheelTimer.totalSeconds <= 0;
+
+                if (wheelExpired) {
+                  return (
+                    <div className="p-6 text-center space-y-3 w-full">
+                      <div className="w-14 h-14 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto border border-rose-500/20">
+                        <AlertTriangle className="w-7 h-7" />
+                      </div>
+                      <h4 className="text-lg font-black text-rose-600">
+                        {wheelTimer.totalSeconds < 0 ? "KAMPANYA HENÜZ BAŞLAMADI" : "KAMPANYA SÜRESİ DOLDU"}
+                      </h4>
+                      <p className="text-xs opacity-75">
+                        {wheelTimer.totalSeconds < 0
+                          ? "Bu kampanya için çark çevirme işlemi henüz açılmamıştır. Başlama tarihini bekleyiniz."
+                          : "Bu kampanya için çark çevirme süresi sona ermiştir. Yeni kampanyalarımızı takip ediniz."}
+                      </p>
+                      <button
+                        onClick={() => setActiveWheelCampaign(null)}
+                        className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase rounded-xl transition-all btn-base"
+                      >
+                        Kapat
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (<>
               {spinError && (
                 <div className="w-full p-4 mb-4 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-2xl text-xs font-bold border border-rose-500/20 flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -1234,6 +1362,8 @@ export default function UserHomePage() {
                   </div>
                 </div>
               )}
+            </>);
+              })()}
             </div>
           </div>
         </div>
