@@ -1,27 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, unlink, mkdir } from "fs/promises";
-import path from "path";
 
 /**
  * POST /api/upload
- * Uploads an image to Vercel Blob storage (production) or local filesystem (dev).
+ * Uploads an image to Vercel Blob storage (production) or returns a base64 data URL (dev).
  * Accepts multipart/form-data with field name "file".
- * Returns the public URL of the uploaded image.
+ * Returns the public URL / data URL of the uploaded image.
  *
  * DELETE /api/upload
- * Deletes an image from Vercel Blob storage or local filesystem.
+ * Deletes an image from Vercel Blob storage.
  * Accepts JSON body with { url: string }.
+ * Base64 data URLs are simply removed from the array client-side, no server action needed.
  */
-
-/** Ensure the local uploads directory exists */
-const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
-async function ensureUploadsDir() {
-  try {
-    await mkdir(UPLOADS_DIR, { recursive: true });
-  } catch {
-    // directory already exists
-  }
-}
 
 /** Dynamically import @vercel/blob functions */
 async function getBlobModule() {
@@ -63,21 +52,17 @@ export async function POST(req: NextRequest) {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
 
     if (!blobToken) {
-      // Fallback: Vercel Blob yoksa dosyayı local public/uploads/ klasörüne kaydet
-      await ensureUploadsDir();
-      const timestamp = Date.now();
-      const ext = file.name.split(".").pop() || "jpg";
-      const filename = `${timestamp}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
-      const filepath = path.join(UPLOADS_DIR, filename);
-
+      // Fallback: Vercel Blob yoksa base64 data URL döndür.
+      // Bu yöntem hem local'de hem Vercel serverless'da sorunsuz çalışır.
       const buffer = Buffer.from(await file.arrayBuffer());
-      await writeFile(filepath, buffer);
+      const base64 = buffer.toString("base64");
+      const dataUrl = `data:${file.type};base64,${base64}`;
 
-      console.log(`[ARYA UPLOAD] Local kaydedildi: ${filename}`);
+      console.log(`[ARYA UPLOAD] Base64 data URL oluşturuldu: ${file.name} (${(base64.length / 1024).toFixed(0)} KB)`);
       return NextResponse.json({
-        url: `/uploads/${filename}`,
+        url: dataUrl,
         devMode: true,
-        message: "Görsel yerel diske kaydedildi (Blob token yok).",
+        message: "Görsel base64 data URL olarak döndürüldü (Blob token yok).",
       });
     }
 
@@ -105,7 +90,7 @@ export async function POST(req: NextRequest) {
       devMode: false,
     });
   } catch (error: any) {
-    console.error("[ARYA BLOB] Upload error:", error);
+    console.error("[ARYA UPLOAD] Upload error:", error);
     return NextResponse.json(
       { 
         error: error.message || "Dosya yüklenirken hata oluştu.",
@@ -119,6 +104,7 @@ export async function POST(req: NextRequest) {
 /**
  * DELETE /api/upload
  * Deletes an image from Vercel Blob storage by URL.
+ * Base64 data URL'ler client'ta array'den çıkarılır, sunucuda işlem gerekmez.
  */
 export async function DELETE(req: NextRequest) {
   try {
@@ -127,16 +113,8 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Silinecek görsel URL'si gerekli." }, { status: 400 });
     }
 
-    // Local file deletion
-    if (url.startsWith("/uploads/")) {
-      const filename = path.basename(url);
-      const filepath = path.join(UPLOADS_DIR, filename);
-      try {
-        await unlink(filepath);
-        console.log(`[ARYA UPLOAD] Local dosya silindi: ${filename}`);
-      } catch {
-        // file already deleted or doesn't exist — no-op
-      }
+    // Base64 data URL'ler client tarafında zaten kaldırılır
+    if (url.startsWith("data:")) {
       return NextResponse.json({ success: true });
     }
 
