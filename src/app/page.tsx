@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { 
   getOrCreateVisitorId, 
   playSound, 
@@ -126,69 +126,73 @@ export default function UserHomePage() {
     localStorage.setItem("arya_theme", nextTheme ? "dark" : "light");
   };
 
-  // Timer interval to tick countdowns - refactored to avoid dependency cycle
+  // Calculate countdown timers for all campaigns
+  const calculateTimers = useCallback(() => {
+    const newTimers: Record<number, any> = {};
+    let hasNewUrgency = false;
+    let urgencyCampaign: Campaign | null = null;
+    let urgencyMinutes = 0;
+
+    campaignsList.forEach((c) => {
+      const end = new Date(c.endDate).getTime();
+      const start = new Date(c.startDate).getTime();
+      const now = Date.now();
+
+      // Kampanya henüz başlamadıysa
+      if (now < start) {
+        newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: -1, status: "Başlamadı" };
+        return;
+      }
+
+      // end date geçersizse (NaN) hata koruması
+      if (isNaN(end) || isNaN(start)) {
+        newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: 0, status: "Hatalı Tarih" };
+        return;
+      }
+
+      const diffMs = end - now;
+      const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
+
+      if (totalSeconds === 0) {
+        newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: 0, status: "Bitti" };
+        return;
+      }
+
+      const days = Math.floor(totalSeconds / (24 * 3600));
+      const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      newTimers[c.id] = { days, hours, minutes, seconds, totalSeconds, status: "Devam Ediyor" };
+
+      // Aciliyet uyarısı: 1 saatten az kaldıysa ve daha gösterilmediyse
+      if (totalSeconds > 0 && totalSeconds <= 3600 && !hasShownUrgencyRef.current[c.id]) {
+        hasShownUrgencyRef.current[c.id] = true;
+        hasNewUrgency = true;
+        urgencyCampaign = c;
+        urgencyMinutes = Math.ceil(totalSeconds / 60);
+      }
+    });
+
+    setTimeRemaining(newTimers);
+    if (hasNewUrgency && urgencyCampaign) {
+      setUrgencyAlert({
+        campaign: urgencyCampaign,
+        timeString: `${urgencyMinutes} dakika`
+      });
+    }
+  }, [campaignsList]);
+
+  // Timer interval to tick countdowns
   useEffect(() => {
     if (campaignsList.length === 0) return;
 
-    const interval = setInterval(() => {
-      const newTimers: Record<number, any> = {};
-      let hasNewUrgency = false;
-      let urgencyCampaign: Campaign | null = null;
-      let urgencyMinutes = 0;
+    // Hemen ilk hesaplamayı yap — "Zaman hesaplanıyor..." beklemesi olmaz
+    calculateTimers();
 
-      campaignsList.forEach((c) => {
-        const end = new Date(c.endDate).getTime();
-        const start = new Date(c.startDate).getTime();
-        const now = Date.now();
-
-        // Kampanya henüz başlamadıysa
-        if (now < start) {
-          newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: -1, status: "Başlamadı" };
-          return;
-        }
-
-        // end date geçersizse (NaN) hata koruması
-        if (isNaN(end) || isNaN(start)) {
-          newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: 0, status: "Hatalı Tarih" };
-          return;
-        }
-
-        const diffMs = end - now;
-        const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
-
-        if (totalSeconds === 0) {
-          newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: 0, status: "Bitti" };
-          return;
-        }
-
-        const days = Math.floor(totalSeconds / (24 * 3600));
-        const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-
-        newTimers[c.id] = { days, hours, minutes, seconds, totalSeconds, status: "Devam Ediyor" };
-
-        // Aciliyet uyarısı: 1 saatten az kaldıysa ve daha gösterilmediyse
-        if (totalSeconds > 0 && totalSeconds <= 3600 && !hasShownUrgencyRef.current[c.id]) {
-          hasShownUrgencyRef.current[c.id] = true;
-          hasNewUrgency = true;
-          urgencyCampaign = c;
-          urgencyMinutes = Math.ceil(totalSeconds / 60);
-        }
-      });
-
-      // State updates tek bir render'da toplanır
-      setTimeRemaining(newTimers);
-      if (hasNewUrgency && urgencyCampaign) {
-        setUrgencyAlert({
-          campaign: urgencyCampaign,
-          timeString: `${urgencyMinutes} dakika`
-        });
-      }
-    }, 1000);
-
+    const interval = setInterval(calculateTimers, 1000);
     return () => clearInterval(interval);
-  }, [campaignsList]); // hasShownUrgency kaldırıldı - ref kullanıyoruz
+  }, [campaignsList, calculateTimers]);
 
   // Automatic carousel image rotation (20 seconds)
   useEffect(() => {
@@ -708,9 +712,9 @@ export default function UserHomePage() {
                       
                       {timer ? (
                         timer.totalSeconds < 0 ? (
-                          <span className="text-[10px] md:text-xs font-bold text-slate-300">YÜKLENİYOR...</span>
+                          <span className="text-[10px] md:text-xs font-bold text-slate-300">{timer.status || "BAŞLAMADI"}</span>
                         ) : timer.totalSeconds === 0 ? (
-                          <span className="text-xs md:text-sm font-black text-rose-500 uppercase">SÜRE DOLDU!</span>
+                          <span className="text-xs md:text-sm font-black text-rose-500 uppercase">{timer.status || "SÜRE DOLDU!"}</span>
                         ) : (
                           <div className="flex items-center space-x-1 sm:space-x-2 font-mono">
                             <div className="text-center">
