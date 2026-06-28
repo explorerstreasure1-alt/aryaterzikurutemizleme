@@ -62,7 +62,7 @@ export default function UserHomePage() {
 
   // Countdown timers
   const [timeRemaining, setTimeRemaining] = useState<Record<number, {
-    days: number; hours: number; minutes: number; seconds: number; totalSeconds: number;
+    days: number; hours: number; minutes: number; seconds: number; totalSeconds: number; status?: string;
   }>>({});
 
   // Modals state
@@ -72,7 +72,8 @@ export default function UserHomePage() {
   
   // High-urgency alert popup state (ending in < 1 hour)
   const [urgencyAlert, setUrgencyAlert] = useState<{ campaign: Campaign; timeString: string } | null>(null);
-  const [hasShownUrgency, setHasShownUrgency] = useState<Record<number, boolean>>({});
+  // Use ref instead of state to avoid useEffect dependency cycle
+  const hasShownUrgencyRef = useRef<Record<number, boolean>>({});
 
   // State for form registrations
   const [firstName, setFirstName] = useState("");
@@ -125,24 +126,35 @@ export default function UserHomePage() {
     localStorage.setItem("arya_theme", nextTheme ? "dark" : "light");
   };
 
-  // Timer interval to tick countdowns
+  // Timer interval to tick countdowns - refactored to avoid dependency cycle
   useEffect(() => {
     if (campaignsList.length === 0) return;
 
     const interval = setInterval(() => {
       const newTimers: Record<number, any> = {};
+      let hasNewUrgency = false;
+      let urgencyCampaign: Campaign | null = null;
+      let urgencyMinutes = 0;
 
       campaignsList.forEach((c) => {
         const end = new Date(c.endDate).getTime();
         const start = new Date(c.startDate).getTime();
         const now = Date.now();
 
+        // Kampanya henüz başlamadıysa
         if (now < start) {
           newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: -1, status: "Başlamadı" };
           return;
         }
 
-        const totalSeconds = Math.max(0, Math.floor((end - now) / 1000));
+        // end date geçersizse (NaN) hata koruması
+        if (isNaN(end) || isNaN(start)) {
+          newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: 0, status: "Hatalı Tarih" };
+          return;
+        }
+
+        const diffMs = end - now;
+        const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
 
         if (totalSeconds === 0) {
           newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: 0, status: "Bitti" };
@@ -156,22 +168,27 @@ export default function UserHomePage() {
 
         newTimers[c.id] = { days, hours, minutes, seconds, totalSeconds, status: "Devam Ediyor" };
 
-        // If less than 1 hour remaining and we haven't shown the pop-up yet, throw a notification!
-        if (totalSeconds > 0 && totalSeconds <= 3600 && !hasShownUrgency[c.id]) {
-          const minutesLeft = Math.ceil(totalSeconds / 60);
-          setUrgencyAlert({
-            campaign: c,
-            timeString: `${minutesLeft} dakika`
-          });
-          setHasShownUrgency(prev => ({ ...prev, [c.id]: true }));
+        // Aciliyet uyarısı: 1 saatten az kaldıysa ve daha gösterilmediyse
+        if (totalSeconds > 0 && totalSeconds <= 3600 && !hasShownUrgencyRef.current[c.id]) {
+          hasShownUrgencyRef.current[c.id] = true;
+          hasNewUrgency = true;
+          urgencyCampaign = c;
+          urgencyMinutes = Math.ceil(totalSeconds / 60);
         }
       });
 
+      // State updates tek bir render'da toplanır
       setTimeRemaining(newTimers);
+      if (hasNewUrgency && urgencyCampaign) {
+        setUrgencyAlert({
+          campaign: urgencyCampaign,
+          timeString: `${urgencyMinutes} dakika`
+        });
+      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [campaignsList, hasShownUrgency]);
+  }, [campaignsList]); // hasShownUrgency kaldırıldı - ref kullanıyoruz
 
   // Automatic carousel image rotation (20 seconds)
   useEffect(() => {
@@ -411,6 +428,38 @@ export default function UserHomePage() {
     }
   };
 
+  // Scroll-lock + esc-close for modals
+  const anyModalOpen = activeJoinCampaign !== null || activeWheelCampaign !== null;
+  const modalRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  useEffect(() => {
+    const body = document.body;
+    if (anyModalOpen) {
+      const scrollbarWidth = window.innerWidth - body.clientWidth;
+      body.style.setProperty("--scrollbar-width", `${scrollbarWidth}px`);
+      body.classList.add("scroll-locked");
+    } else {
+      body.classList.remove("scroll-locked");
+    }
+    return () => body.classList.remove("scroll-locked");
+  }, [anyModalOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (activeWheelCampaign && !isSpinning) {
+          setActiveWheelCampaign(null);
+        } else if (activeJoinCampaign) {
+          setActiveJoinCampaign(null);
+        }
+      }
+    };
+    if (anyModalOpen) {
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [activeJoinCampaign, activeWheelCampaign, isSpinning, anyModalOpen]);
+
   // Social trigger for Paylaş & Kazan
   const handleShareAndGainBonus = async () => {
     if (!activeWheelCampaign) return;
@@ -453,74 +502,74 @@ export default function UserHomePage() {
       
       {/* HEADER SECTION */}
       <header className={`sticky top-0 z-40 backdrop-blur-md border-b transition-all ${darkMode ? "bg-slate-900/90 border-teal-900" : "bg-white/90 border-teal-100"}`}>
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-teal-600 text-white p-2.5 rounded-2xl shadow-md flex items-center justify-center needle-logo">
+        <div className="max-w-6xl mx-auto px-3 md:px-4 py-3 md:py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2 md:space-x-3 min-w-0">
+            <div className="bg-teal-600 text-white p-2 md:p-2.5 rounded-2xl shadow-md flex items-center justify-center needle-logo shrink-0">
               {/* Needle/Pin Logo */}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 md:w-6 md:h-6">
                 <path d="M10 6L20 16L8 22L6 20L2 18L10 6Z" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M10 6L16 2L20 6L18 10" strokeLinecap="round" strokeLinejoin="round"/>
                 <circle cx="8" cy="18" r="1.5" fill="currentColor" stroke="none"/>
               </svg>
             </div>
-            <div>
-              <h1 className="text-xl md:text-2xl font-black tracking-tight flex items-center gap-1.5 text-teal-600">
-                ARYA TERZİ <span className="text-amber-500 font-medium text-xs md:text-sm bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">KURU TEMİZLEME</span>
+            <div className="min-w-0">
+              <h1 className="text-base md:text-xl lg:text-2xl font-black tracking-tight flex flex-wrap items-center gap-1 text-teal-600">
+                ARYA TERZİ <span className="text-amber-500 font-medium text-[10px] md:text-xs bg-amber-500/10 px-1.5 md:px-2 py-0.5 rounded-full border border-amber-500/20 whitespace-nowrap">KURU TEMİZLEME</span>
               </h1>
-              <p className="text-[10px] md:text-xs font-semibold opacity-75 tracking-wider uppercase">Süper Kampanya Makinesi</p>
+              <p className="text-[9px] md:text-xs font-bold opacity-80 tracking-wider uppercase">Süper Kampanya Makinesi</p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 md:space-x-3 shrink-0">
             <a 
               href="/admin" 
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold border border-teal-500/30 text-teal-600 hover:bg-teal-500 hover:text-white transition-all flex items-center gap-1"
+              className="px-2.5 md:px-3.5 py-1.5 rounded-xl text-[10px] md:text-xs font-bold border border-teal-500/30 text-teal-600 hover:bg-teal-500 hover:text-white transition-all flex items-center gap-1"
             >
-              <Lock className="w-3 h-3" /> Admin Girişi
+              <Lock className="w-2.5 h-2.5 md:w-3 md:h-3" /> <span className="hidden xs:inline">Admin</span>
             </a>
             
             <button 
               onClick={toggleTheme}
-              className={`p-2.5 rounded-xl border transition-all ${darkMode ? "bg-slate-800 border-slate-700 hover:bg-slate-700 text-amber-400" : "bg-teal-50/50 border-teal-100 hover:bg-teal-100/50 text-teal-600"}`}
+              className={`p-2 md:p-2.5 rounded-xl border transition-all btn-base ${darkMode ? "bg-slate-800 border-slate-700 hover:bg-slate-700 text-amber-400" : "bg-teal-50/50 border-teal-100 hover:bg-teal-100/50 text-teal-600"}`}
               title={darkMode ? "Aydınlık Mod" : "Karanlık Mod"}
             >
-              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {darkMode ? <Sun className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <Moon className="w-3.5 h-3.5 md:w-4 md:h-4" />}
             </button>
           </div>
         </div>
       </header>
 
       {/* HERO HERO SÜPER BANNER */}
-      <section className={`relative overflow-hidden py-12 md:py-20 border-b ${darkMode ? "bg-gradient-to-br from-slate-950 via-teal-950/20 to-slate-950 border-slate-900" : "bg-gradient-to-br from-[#FEFCF5] via-teal-50/30 to-[#f8f4e8] border-teal-50"}`}>
-        <div className="max-w-4xl mx-auto text-center px-4 relative z-10">
-          <div className="inline-flex items-center gap-2 bg-teal-500/10 text-teal-600 px-3 py-1.5 rounded-full text-xs font-bold mb-4 border border-teal-500/20">
-            <Flame className="w-3.5 h-3.5 text-amber-500 animate-bounce" /> %100 GERÇEK VE ANLIK HEDİYELİ ÇARK OYUNU
+      <section className={`relative overflow-hidden py-10 md:py-20 border-b ${darkMode ? "bg-gradient-to-br from-slate-950 via-teal-950/20 to-slate-950 border-slate-900" : "bg-gradient-to-br from-[#FEFCF5] via-teal-50/30 to-[#f8f4e8] border-teal-50"}`}>
+        <div className="max-w-4xl mx-auto text-center px-3 md:px-4 relative z-10">
+          <div className="inline-flex items-center gap-1.5 md:gap-2 bg-teal-500/10 text-teal-600 px-2 md:px-3 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-3 md:mb-4 border border-teal-500/20">
+            <Flame className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-500 animate-bounce" /> %100 GERÇEK VE ANLIK HEDİYELİ ÇARK OYUNU
           </div>
-          <h2 className="text-4xl md:text-6xl font-black tracking-tight mb-4 text-teal-600 leading-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-black tracking-tight mb-3 md:mb-4 text-teal-600 leading-tight">
             Kuru Temizlemede <br />
-            <span className="text-teal-900 dark:text-teal-100 bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent">Süper Fırsat Banner’ları</span>
+            <span className="text-teal-900 dark:text-teal-100 bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent">Süper Fırsat Banner&rsquo;ları</span>
           </h2>
-          <p className="text-base md:text-xl opacity-80 max-w-2xl mx-auto mb-8 leading-relaxed">
-            Arya Terzi’den kaçırılmayacak fırsatlar! Geri sayım bitmeden kampanyaya katılın, şans çarkını çevirin ve anında indirim kodları ile hediyeler kazanın!
+          <p className="text-sm sm:text-base md:text-xl opacity-85 max-w-2xl mx-auto mb-6 md:mb-8 leading-relaxed">
+            Arya Terzi&rsquo;den kaçırılmayacak fırsatlar! Geri sayım bitmeden kampanyaya katılın, şans çarkını çevirin ve anında indirim kodları ile hediyeler kazanın!
           </p>
 
           {/* FILTER TABS */}
           <div className="flex flex-wrap items-center justify-center gap-2 max-w-md mx-auto p-1.5 rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-teal-500/10">
             <button
               onClick={() => setFilter("all")}
-              className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "all" ? "bg-teal-600 text-white shadow-md" : "text-slate-500 hover:text-teal-600 dark:text-slate-400"}`}
+              className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all btn-base ${filter === "all" ? "bg-teal-600 text-white shadow-md" : "text-slate-500 hover:text-teal-600 dark:text-slate-400"}`}
             >
               Tüm Kampanyalar
             </button>
             <button
               onClick={() => setFilter("ongoing")}
-              className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "ongoing" ? "bg-teal-600 text-white shadow-md" : "text-slate-500 hover:text-teal-600 dark:text-slate-400"}`}
+              className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all btn-base ${filter === "ongoing" ? "bg-teal-600 text-white shadow-md" : "text-slate-500 hover:text-teal-600 dark:text-slate-400"}`}
             >
               Aktif Olanlar
             </button>
             <button
               onClick={() => setFilter("ending_soon")}
-              className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${filter === "ending_soon" ? "bg-amber-500 text-white shadow-md" : "text-slate-500 hover:text-amber-500 dark:text-slate-400"}`}
+              className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all btn-base flex items-center justify-center gap-1 ${filter === "ending_soon" ? "bg-amber-500 text-white shadow-md" : "text-slate-500 hover:text-amber-500 dark:text-slate-400"}`}
             >
               <Clock className="w-3 h-3 animate-spin" /> Son 48 Saat!
             </button>
@@ -547,7 +596,7 @@ export default function UserHomePage() {
             </p>
             <button 
               onClick={() => setFilter("all")} 
-              className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl transition-all"
+              className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl transition-all btn-base"
             >
               Tümünü Göster
             </button>
@@ -597,7 +646,7 @@ export default function UserHomePage() {
                   </div>
 
                   {/* DOUBLE IMAGE CAROUSEL OR STATIC BANNER IMAGE */}
-                  <div className="relative h-64 md:h-[450px] w-full overflow-hidden bg-slate-100 dark:bg-slate-950">
+                  <div className="relative h-52 sm:h-72 md:h-[450px] w-full overflow-hidden bg-slate-100 dark:bg-slate-950">
                     <img 
                       src={imagesList[currentImgIdx]} 
                       alt={campaign.name}
@@ -649,78 +698,78 @@ export default function UserHomePage() {
                     )}
 
                     {/* FLOATING COUNTDOWN TIMER ON TOP OF BANNER */}
-                    <div className="absolute right-4 bottom-4 z-20 bg-black/75 backdrop-blur-md p-3 md:p-4 rounded-2xl border border-white/10 text-white shadow-2xl">
-                      <p className="text-[10px] uppercase font-bold tracking-wider text-teal-400 mb-1.5 flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 animate-spin text-amber-400" /> Kalan Zaman:
+                    <div className="absolute right-2 sm:right-4 bottom-2 sm:bottom-4 z-20 bg-black/80 backdrop-blur-md p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl border border-white/10 text-white shadow-2xl">
+                      <p className="text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-teal-400 mb-1 md:mb-1.5 flex items-center gap-1">
+                        <Clock className="w-3 h-3 md:w-3.5 md:h-3.5 animate-spin text-amber-400" /> Kalan Zaman:
                       </p>
                       
                       {timer ? (
                         timer.totalSeconds < 0 ? (
-                          <span className="text-xs font-bold text-slate-300">YÜKLENİYOR...</span>
+                          <span className="text-[10px] md:text-xs font-bold text-slate-300">YÜKLENİYOR...</span>
                         ) : timer.totalSeconds === 0 ? (
-                          <span className="text-sm font-black text-rose-500 uppercase">SÜRE DOLDU!</span>
+                          <span className="text-xs md:text-sm font-black text-rose-500 uppercase">SÜRE DOLDU!</span>
                         ) : (
-                          <div className="flex items-center space-x-2 font-mono">
+                          <div className="flex items-center space-x-1 sm:space-x-2 font-mono">
                             <div className="text-center">
-                              <span className="text-sm md:text-xl font-black bg-white/10 px-2 py-0.5 rounded text-amber-300 block">{String(timer.days).padStart(2, "0")}</span>
-                              <span className="text-[8px] uppercase font-bold text-white/70">Gün</span>
+                              <span className="text-xs sm:text-sm md:text-xl font-black bg-white/10 px-1.5 sm:px-2 py-0.5 rounded text-amber-300 block">{String(timer.days).padStart(2, "0")}</span>
+                              <span className="text-[7px] md:text-[8px] uppercase font-bold text-white/85">Gün</span>
                             </div>
-                            <span className="text-xs font-bold animate-pulse text-white/50">:</span>
+                            <span className="text-[10px] md:text-xs font-bold animate-pulse text-white/70">:</span>
                             <div className="text-center">
-                              <span className="text-sm md:text-xl font-black bg-white/10 px-2 py-0.5 rounded text-white block">{String(timer.hours).padStart(2, "0")}</span>
-                              <span className="text-[8px] uppercase font-bold text-white/70">Saat</span>
+                              <span className="text-xs sm:text-sm md:text-xl font-black bg-white/10 px-1.5 sm:px-2 py-0.5 rounded text-white block">{String(timer.hours).padStart(2, "0")}</span>
+                              <span className="text-[7px] md:text-[8px] uppercase font-bold text-white/85">Saat</span>
                             </div>
-                            <span className="text-xs font-bold animate-pulse text-white/50">:</span>
+                            <span className="text-[10px] md:text-xs font-bold animate-pulse text-white/70">:</span>
                             <div className="text-center">
-                              <span className="text-sm md:text-xl font-black bg-white/10 px-2 py-0.5 rounded text-white block">{String(timer.minutes).padStart(2, "0")}</span>
-                              <span className="text-[8px] uppercase font-bold text-white/70">Dk</span>
+                              <span className="text-xs sm:text-sm md:text-xl font-black bg-white/10 px-1.5 sm:px-2 py-0.5 rounded text-white block">{String(timer.minutes).padStart(2, "0")}</span>
+                              <span className="text-[7px] md:text-[8px] uppercase font-bold text-white/85">Dk</span>
                             </div>
-                            <span className="text-xs font-bold animate-pulse text-white/50">:</span>
+                            <span className="text-[10px] md:text-xs font-bold animate-pulse text-white/70">:</span>
                             <div className="text-center">
-                              <span className="text-sm md:text-xl font-black bg-white/10 px-2 py-0.5 rounded text-red-400 block">{String(timer.seconds).padStart(2, "0")}</span>
-                              <span className="text-[8px] uppercase font-bold text-white/70">Sn</span>
+                              <span className="text-xs sm:text-sm md:text-xl font-black bg-white/10 px-1.5 sm:px-2 py-0.5 rounded text-red-400 block">{String(timer.seconds).padStart(2, "0")}</span>
+                              <span className="text-[7px] md:text-[8px] uppercase font-bold text-white/85">Sn</span>
                             </div>
                           </div>
                         )
                       ) : (
-                        <span className="text-xs text-white/50">Zaman hesaplanıyor...</span>
+                        <span className="text-[10px] md:text-xs text-white/70">Zaman hesaplanıyor...</span>
                       )}
                     </div>
                   </div>
 
                   {/* BANNER DESCRIPTION AND CTA ACTIONS */}
-                  <div className="p-6 md:p-8 space-y-6">
-                    <div className="space-y-2">
-                      <h3 className="text-2xl md:text-3xl font-black tracking-tight text-teal-600 dark:text-teal-400">
+                  <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <h3 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-teal-600 dark:text-teal-400">
                         {campaign.name}
                       </h3>
-                      <p className="text-sm md:text-base leading-relaxed text-slate-700 dark:text-slate-300">
+                      <p className="text-xs sm:text-sm md:text-base leading-relaxed text-slate-700 dark:text-slate-300">
                         {campaign.description}
                       </p>
                     </div>
 
                     {/* URGENCY ALERT BAR */}
                     {timer && timer.totalSeconds > 0 && timer.totalSeconds <= 3600 && (
-                      <div className="flex items-center gap-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-4 py-3 rounded-2xl text-xs font-bold border border-amber-500/20 animate-pulse">
-                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                      <div className="flex items-center gap-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold border border-amber-500/20 animate-pulse">
+                        <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 shrink-0" />
                         <span>AMAN KAÇIRMA! Bu kampanyanın bitmesine {Math.ceil(timer.totalSeconds / 60)} dakika kaldı! Acele edin!</span>
                       </div>
                     )}
 
                     {/* THE THREE POWERFUL ACTIONS */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                       {/* 1. KAMPANYAYA KATIL */}
                       <button
                         onClick={() => handleOpenJoin(campaign)}
                         disabled={isQuotaFull || (timer && timer.totalSeconds <= 0)}
-                        className={`py-4 px-6 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all shadow-lg ${
+                        className={`py-3 sm:py-4 px-4 sm:px-6 rounded-xl sm:rounded-2xl font-black text-[11px] sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg btn-base ${
                           isQuotaFull || (timer && timer.totalSeconds <= 0)
                             ? "bg-slate-300 text-slate-500 dark:bg-slate-800 dark:text-slate-600 cursor-not-allowed"
                             : "bg-teal-600 hover:bg-teal-700 text-white hover:scale-[1.02] shadow-teal-600/20"
                         }`}
                       >
-                        <User className="w-4.5 h-4.5" />
-                        Kampanyaya Katıl
+                        <User className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                        {isQuotaFull ? "Kontenjan Dolu" : "Kampanyaya Katıl"}
                       </button>
 
                       {/* 2. DETAYLARI ÖĞREN */}
@@ -728,24 +777,24 @@ export default function UserHomePage() {
                         href={learnMoreUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="py-4 px-6 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-[1.02] shadow-emerald-600/20 text-center"
+                        className="py-3 sm:py-4 px-4 sm:px-6 rounded-xl sm:rounded-2xl font-black text-[11px] sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-[1.02] shadow-emerald-600/20 text-center btn-base"
                       >
-                        <Phone className="w-4.5 h-4.5 animate-bounce" />
-                        Detayları Öğren (WhatsApp)
+                        <Phone className="w-4 h-4 sm:w-4.5 sm:h-4.5 animate-bounce" />
+                        Detayları Öğren
                       </a>
 
                       {/* 3. ÇARKI ÇEVİR */}
                       <button
                         onClick={() => handleOpenWheel(campaign)}
                         disabled={timer && timer.totalSeconds <= 0}
-                        className={`py-4 px-6 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all shadow-lg ${
+                        className={`py-3 sm:py-4 px-4 sm:px-6 rounded-xl sm:rounded-2xl font-black text-[11px] sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg btn-base ${
                           timer && timer.totalSeconds <= 0
                             ? "bg-slate-300 text-slate-500 dark:bg-slate-800 dark:text-slate-600 cursor-not-allowed"
                             : "bg-amber-500 hover:bg-amber-600 text-slate-950 hover:scale-[1.02] shadow-amber-500/20"
                         }`}
                       >
-                        <Gift className="w-4.5 h-4.5 text-red-700" />
-                        Şans Çarkını Çevir!
+                        <Gift className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-red-700" />
+                        Çarkı Çevir!
                       </button>
                     </div>
                   </div>
@@ -775,24 +824,24 @@ export default function UserHomePage() {
 
       {/* MODAL 1: KAMPANYAYA KATIL */}
       {activeJoinCampaign && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 text-slate-950 dark:text-slate-100 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-teal-500/20 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 modal-backdrop animate-fade-in overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 text-slate-950 dark:text-slate-100 rounded-2xl sm:rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-teal-500/20 relative my-4 sm:my-8">
             <button 
               onClick={() => setActiveJoinCampaign(null)} 
-              className="absolute top-4 right-4 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:opacity-80 transition-all text-slate-600 dark:text-slate-300"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:opacity-80 transition-all text-slate-600 dark:text-slate-300 z-10 btn-base"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
 
-            <div className="p-6 md:p-8">
-              <div className="inline-flex items-center gap-2 bg-teal-500/10 text-teal-600 px-3 py-1 rounded-full text-xs font-bold mb-4">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Kampanya Kayıt Formu
+            <div className="p-4 sm:p-6 md:p-8">
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-teal-500/10 text-teal-600 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold mb-3 sm:mb-4">
+                <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Kampanya Kayıt Formu
               </div>
 
-              <h3 className="text-xl md:text-2xl font-black tracking-tight text-teal-600 mb-2">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight text-teal-600 mb-1.5 sm:mb-2">
                 {activeJoinCampaign.name}
               </h3>
-              <p className="text-xs opacity-70 mb-6">
+              <p className="text-[11px] sm:text-xs opacity-80 mb-4 sm:mb-6">
                 Aşağıdaki alanları doldurarak bu kampanyadaki hakkınızı hemen rezerve edebilirsiniz. İndirim hakkınız anında sisteme tanımlanır.
               </p>
 
@@ -814,7 +863,7 @@ export default function UserHomePage() {
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         placeholder="Örn. Ahmet"
-                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold"
+                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
                       />
                     </div>
                     <div>
@@ -825,7 +874,7 @@ export default function UserHomePage() {
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         placeholder="Örn. Yılmaz"
-                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold"
+                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
                       />
                     </div>
                   </div>
@@ -838,7 +887,7 @@ export default function UserHomePage() {
                       value={fullPhone}
                       onChange={(e) => setFullPhone(e.target.value)}
                       placeholder="Örn. 0555 123 45 67"
-                      className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold"
+                      className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
                     />
                     <p className="text-[10px] opacity-60 mt-1">İletişime geçmek ve WhatsApp doğrulaması için gereklidir.</p>
                   </div>
@@ -852,14 +901,14 @@ export default function UserHomePage() {
                       value={phoneLastFour}
                       onChange={(e) => setPhoneLastFour(e.target.value.replace(/\D/g, ""))}
                       placeholder="Örn. 4567"
-                      className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-mono font-black text-center text-lg tracking-widest"
+                      className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-mono font-black text-center text-lg tracking-widest input-field"
                     />
                     <p className="text-[10px] opacity-60 mt-1">Çift katılımları ve hileyi önlemek amacıyla teyit amaçlı istenir.</p>
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg hover:scale-[1.01]"
+                    className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg hover:scale-[1.01] btn-base"
                   >
                     Katılımı Kaydet ve Rezervasyon Yap!
                   </button>
@@ -888,14 +937,14 @@ export default function UserHomePage() {
                       href={getWhatsAppUrl(ARYA_WHATSAPP_PHONE, `Merhaba Arya Terzi, "${activeJoinCampaign.name}" kampanyasına katıldım. Bilgilerimi doğrulayıp haklarımı almak istiyorum. İsim: ${firstName} ${lastName}, Tel son 4 hane: ${phoneLastFour}`)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="py-4 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg text-center flex items-center justify-center gap-2"
+                      className="py-4 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg text-center flex items-center justify-center gap-2 btn-base"
                     >
                       <Phone className="w-4 h-4" /> Hemen WhatsApp'tan Yaz
                     </a>
                     
                     <button
                       onClick={() => setActiveJoinCampaign(null)}
-                      className="py-3 px-6 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 font-bold text-xs uppercase rounded-2xl transition-all"
+                      className="py-3 px-6 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 font-bold text-xs uppercase rounded-2xl transition-all btn-base"
                     >
                       Kapat
                     </button>
@@ -910,25 +959,25 @@ export default function UserHomePage() {
 
       {/* MODAL 2: INTERACTIVE WHEEL SPINNER */}
       {activeWheelCampaign && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 text-slate-950 dark:text-slate-100 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-amber-500/20 relative my-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 modal-backdrop overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 text-slate-950 dark:text-slate-100 rounded-2xl sm:rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-amber-500/20 relative my-4 sm:my-8">
             <button 
               onClick={() => setActiveWheelCampaign(null)} 
-              className="absolute top-4 right-4 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:opacity-80 transition-all text-slate-600 dark:text-slate-300 z-10"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:opacity-80 transition-all text-slate-600 dark:text-slate-300 z-10 btn-base"
               disabled={isSpinning}
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
 
-            <div className="p-6 md:p-8 flex flex-col items-center">
-              <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-600 px-3 py-1 rounded-full text-xs font-bold mb-4">
-                <Gift className="w-3.5 h-3.5 text-red-500 animate-bounce" /> Arya Şans Çarkı Makinesi
+            <div className="p-4 sm:p-6 md:p-8 flex flex-col items-center">
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-amber-500/10 text-amber-600 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold mb-3 sm:mb-4">
+                <Gift className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-500 animate-bounce" /> Arya Şans Çarkı Makinesi
               </div>
 
-              <h3 className="text-xl md:text-2xl font-black tracking-tight text-teal-600 mb-1 text-center">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight text-teal-600 mb-1 text-center">
                 {activeWheelCampaign.name}
               </h3>
-              <p className="text-xs opacity-75 mb-6 text-center max-w-md">
+              <p className="text-[11px] sm:text-xs opacity-80 mb-4 sm:mb-6 text-center max-w-md">
                 Admin tarafından tanımlanmış gerçek kazanç oranlı çarkımızı çevirin, indirim ve bedava hizmetleri anında yakalayın!
               </p>
 
@@ -947,9 +996,9 @@ export default function UserHomePage() {
                 <div className="flex flex-col items-center space-y-8 w-full">
                   
                   {/* Dynamic SVG Wheel Graphic */}
-                  <div className="relative w-72 h-72 md:w-80 md:h-80">
+                  <div className="relative w-56 h-56 sm:w-72 sm:h-72 md:w-80 md:h-80">
                     {/* Arrow Pointer */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-4 z-20 w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[25px] border-t-red-600 drop-shadow-md"></div>
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-2 sm:-mt-4 z-20 w-0 h-0 border-l-[10px] sm:border-l-[15px] border-l-transparent border-r-[10px] sm:border-r-[15px] border-r-transparent border-t-[18px] sm:border-t-[25px] border-t-red-600 drop-shadow-md"></div>
                     
                     {/* Rotating Wheel Container */}
                     <div 
@@ -1025,7 +1074,7 @@ export default function UserHomePage() {
                   <button
                     onClick={triggerWheelSpin}
                     disabled={isSpinning}
-                    className={`w-full max-w-sm py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-xl ${
+                    className={`w-full max-w-sm py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-xl btn-base ${
                       isSpinning 
                         ? "bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed" 
                         : "bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-slate-950 hover:scale-[1.02]"
@@ -1059,7 +1108,7 @@ export default function UserHomePage() {
                           value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
                           placeholder="Ahmet"
-                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 input-field"
                         />
                       </div>
                       <div>
@@ -1070,7 +1119,7 @@ export default function UserHomePage() {
                           value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
                           placeholder="Yılmaz"
-                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 input-field"
                         />
                       </div>
                     </div>
@@ -1083,7 +1132,7 @@ export default function UserHomePage() {
                         value={fullPhone}
                         onChange={(e) => setFullPhone(e.target.value)}
                         placeholder="0555 123 45 67"
-                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 input-field"
                       />
                     </div>
 
@@ -1096,13 +1145,13 @@ export default function UserHomePage() {
                         value={phoneLastFour}
                         onChange={(e) => setPhoneLastFour(e.target.value.replace(/\D/g, ""))}
                         placeholder="4567"
-                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-center font-mono font-black text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-center font-mono font-black text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-500 input-field"
                       />
                     </div>
 
                     <button
                       type="submit"
-                      className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-xl hover:scale-[1.01]"
+                      className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-xl hover:scale-[1.01] btn-base"
                     >
                       Ödülümü Adıma Kaydet!
                     </button>
@@ -1146,7 +1195,7 @@ export default function UserHomePage() {
                     {!shareBonusCode ? (
                       <button
                         onClick={handleShareAndGainBonus}
-                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow flex items-center justify-center gap-2"
+                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow flex items-center justify-center gap-2 btn-base"
                       >
                         <Share2 className="w-4 h-4" /> Arkadaşına WhatsApp'tan Gönder & Kazan!
                       </button>
@@ -1164,14 +1213,14 @@ export default function UserHomePage() {
                       href={getWhatsAppUrl(ARYA_WHATSAPP_PHONE, `Merhaba Arya Terzi, şans çarkından "${selectedPrize.text}" ödülü kazandım! Kupon kodum: ${spinPromoCode}. İsim: ${firstName} ${lastName}`)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="py-4 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg text-center flex items-center justify-center gap-2"
+                      className="py-4 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg text-center flex items-center justify-center gap-2 btn-base"
                     >
                       <Phone className="w-4 h-4" /> Ödülü Doğrulamak İçin WhatsApp'tan Yaz
                     </a>
 
                     <button
                       onClick={() => setActiveWheelCampaign(null)}
-                      className="py-3 px-6 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 font-bold text-xs uppercase rounded-2xl transition-all"
+                      className="py-3 px-6 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 font-bold text-xs uppercase rounded-2xl transition-all btn-base"
                     >
                       Pencereyi Kapat
                     </button>
@@ -1185,7 +1234,7 @@ export default function UserHomePage() {
 
       {/* URGENCY DETECTED HIGH CONVERTING POP-UP */}
       {urgencyAlert && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-red-600 text-white p-5 rounded-3xl shadow-2xl border border-red-500 animate-slide-in flex flex-col gap-3">
+        <div className="fixed bottom-3 sm:bottom-6 right-3 sm:right-6 left-3 sm:left-auto z-50 max-w-sm w-auto sm:w-full bg-red-600 text-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl shadow-2xl border border-red-500 animate-fade-in sm:animate-slide-in flex flex-col gap-2 sm:gap-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
               <Flame className="w-5 h-5 text-amber-300 animate-bounce" />
@@ -1193,7 +1242,7 @@ export default function UserHomePage() {
             </div>
             <button 
               onClick={() => setUrgencyAlert(null)}
-              className="text-white/80 hover:text-white bg-black/20 p-1.5 rounded-full transition-all"
+              className="text-white/80 hover:text-white bg-black/20 p-1.5 rounded-full transition-all btn-base"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -1212,7 +1261,7 @@ export default function UserHomePage() {
                 handleOpenWheel(urgencyAlert.campaign);
                 setUrgencyAlert(null);
               }}
-              className="flex-1 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-[10px] uppercase rounded-xl transition-all text-center"
+              className="flex-1 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-[10px] uppercase rounded-xl transition-all text-center btn-base"
             >
               Çarkı Çevir!
             </button>
@@ -1221,7 +1270,7 @@ export default function UserHomePage() {
                 handleOpenJoin(urgencyAlert.campaign);
                 setUrgencyAlert(null);
               }}
-              className="flex-1 py-2 bg-black/40 hover:bg-black/60 text-white font-black text-[10px] uppercase rounded-xl transition-all text-center"
+              className="flex-1 py-2 bg-black/40 hover:bg-black/60 text-white font-black text-[10px] uppercase rounded-xl transition-all text-center btn-base"
             >
               Katıl!
             </button>
