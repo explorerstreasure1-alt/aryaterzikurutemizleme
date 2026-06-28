@@ -554,6 +554,7 @@ export default function UserHomePage() {
   };
 
   return (
+    <>
     <div className={`min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-slate-100" : "bg-[#FEFCF5] text-teal-950 rose-pattern-bg"}`}>
       
       <header className={`sticky top-0 z-40 backdrop-blur-md border-b transition-all ${darkMode ? "bg-slate-900/90 border-teal-900" : "bg-white/90 border-teal-100"}`}>
@@ -899,7 +900,7 @@ export default function UserHomePage() {
           </p>
         </div>
       </footer>
-
+    </div>
 
       {/* KAMPANYAYA KATIL MODAL */}
       {activeJoinCampaign && (
@@ -1595,6 +1596,6 @@ export default function UserHomePage() {
         </div>
       )}
 
-    </div>
+    </>
   );
 }
