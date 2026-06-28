@@ -1,20 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
+import { writeFile, unlink, mkdir } from "fs/promises";
+import path from "path";
 
 /**
  * POST /api/upload
- * Uploads an image to Vercel Blob storage.
+ * Uploads an image to Vercel Blob storage (production) or local filesystem (dev).
  * Accepts multipart/form-data with field name "file".
  * Returns the public URL of the uploaded image.
  *
  * DELETE /api/upload
- * Deletes an image from Vercel Blob storage.
+ * Deletes an image from Vercel Blob storage or local filesystem.
  * Accepts JSON body with { url: string }.
- *
- * Vercel Deploy Güvenliği:
- * - BLOB_READ_WRITE_TOKEN yoksa otomatik olarak fallback (placeholder) kullanır
- * - Production'da BLOB_READ_WRITE_TOKEN .env'e eklenmelidir
- * - Dinamik import sayesinde @vercel/blob sadece token varsa yüklenir
  */
+
+/** Ensure the local uploads directory exists */
+const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
+async function ensureUploadsDir() {
+  try {
+    await mkdir(UPLOADS_DIR, { recursive: true });
+  } catch {
+    // directory already exists
+  }
+}
 
 /** Dynamically import @vercel/blob functions */
 async function getBlobModule() {
@@ -56,12 +63,21 @@ export async function POST(req: NextRequest) {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
 
     if (!blobToken) {
-      // Fallback: Vercel'e deploy edildiğinde token yoksa çökmez, placeholder döndürür
-      console.log(`[ARYA BLOB] Token bulunamadı. Placeholder kullanılıyor: ${file.name}`);
+      // Fallback: Vercel Blob yoksa dosyayı local public/uploads/ klasörüne kaydet
+      await ensureUploadsDir();
+      const timestamp = Date.now();
+      const ext = file.name.split(".").pop() || "jpg";
+      const filename = `${timestamp}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+      const filepath = path.join(UPLOADS_DIR, filename);
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+      await writeFile(filepath, buffer);
+
+      console.log(`[ARYA UPLOAD] Local kaydedildi: ${filename}`);
       return NextResponse.json({
-        url: `https://images.unsplash.com/photo-1545127398-14699f92334b?auto=format&fit=crop&w=1200&q=80`,
+        url: `/uploads/${filename}`,
         devMode: true,
-        message: "Blob depolama yapılandırılmamış. Placeholder görsel kullanıldı. Vercel proje ayarlarına BLOB_READ_WRITE_TOKEN ekleyin.",
+        message: "Görsel yerel diske kaydedildi (Blob token yok).",
       });
     }
 
@@ -111,6 +127,20 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Silinecek görsel URL'si gerekli." }, { status: 400 });
     }
 
+    // Local file deletion
+    if (url.startsWith("/uploads/")) {
+      const filename = path.basename(url);
+      const filepath = path.join(UPLOADS_DIR, filename);
+      try {
+        await unlink(filepath);
+        console.log(`[ARYA UPLOAD] Local dosya silindi: ${filename}`);
+      } catch {
+        // file already deleted or doesn't exist — no-op
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    // Vercel Blob deletion
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
     if (!blobToken) {
       return NextResponse.json({ error: "Blob depolama yapılandırılmamış." }, { status: 400 });
