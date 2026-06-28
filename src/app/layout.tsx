@@ -98,6 +98,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <meta name="apple-mobile-web-app-title" content="Arya Terzi" />
         <meta name="format-detection" content="telephone=yes" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧺</text></svg>" />
         
         {/* JSON-LD Structured Data for Local Business */}
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD structured data requires dangerouslySetInnerHTML in Next.js */}
