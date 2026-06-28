@@ -281,18 +281,13 @@ export default function UserHomePage() {
     }
 
     // Validations
-    if (!firstName.trim() || !lastName.trim()) {
-      setActionError("Lütfen isim ve soyisminizi giriniz.");
-      setJoining(false);
-      return;
-    }
-    if (fullPhone.replace(/\D/g, "").length < 10) {
-      setActionError("Lütfen geçerli bir telefon numarası giriniz (en az 10 hane).");
+    if (firstName.trim().length !== 1 || lastName.trim().length !== 1) {
+      setActionError("Lütfen isminizin ve soyisminizin sadece ilk harfini giriniz.");
       setJoining(false);
       return;
     }
     if (phoneLastFour.replace(/\D/g, "").length !== 4) {
-      setActionError("Telefon numaranızın son 4 hanesi doğrulamak için zorunludur.");
+      setActionError("Lütfen telefon numaranızın son 4 hanesini giriniz.");
       setJoining(false);
       return;
     }
@@ -303,9 +298,8 @@ export default function UserHomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           campaignId: activeJoinCampaign.id,
-          firstName,
-          lastName,
-          fullPhone,
+          firstName: firstName.trim().toUpperCase(),
+          lastName: lastName.trim().toUpperCase(),
           phoneLastFour,
           cookieId: visitorId,
         }),
@@ -386,18 +380,28 @@ export default function UserHomePage() {
         return;
       }
 
-      const segmentDegrees = 360 / prizesList.length;
+      const segmentCount = prizesList.length;
+      const segmentDegrees = 360 / segmentCount;
       const prizeCenterAngle = (prizeIndex * segmentDegrees) + (segmentDegrees / 2);
 
       const landingAngle = 360 - prizeCenterAngle;
-      const finalRotation = (360 * 6) + landingAngle;
+      // Dynamic spin: more segments = more rotations for visual drama
+      const fullSpins = Math.max(5, Math.min(9, segmentCount));
+      const finalRotation = (360 * fullSpins) + landingAngle;
+
+      // Dynamic duration: 4 to 7 seconds based on segment count
+      const spinDuration = Math.max(4, Math.min(7, segmentCount * 0.7));
+      const tickDurationMs = spinDuration * 1000;
 
       // Önceki spin kaynaklarını temizle
       if (spinTickRef.current) clearInterval(spinTickRef.current);
       if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
 
+      // Dynamic tick: one tick per segment crossing during spin
+      const totalTicks = Math.max(15, segmentCount * 8);
+      const tickIntervalMs = tickDurationMs / totalTicks;
+
       let tickCount = 0;
-      const totalTicks = 45;
       const tickInterval = setInterval(() => {
         if (tickCount < totalTicks) {
           playSound("tick");
@@ -406,7 +410,7 @@ export default function UserHomePage() {
           clearInterval(tickInterval);
           spinTickRef.current = null;
         }
-      }, 90);
+      }, tickIntervalMs);
       spinTickRef.current = tickInterval;
 
       setRotationDegrees(finalRotation);
@@ -418,7 +422,7 @@ export default function UserHomePage() {
         setSelectedPrize(prize);
         setSpinState("drawn");
         playSound("success");
-      }, 5000); // 5 seconds spin animation
+      }, tickDurationMs);
 
     } catch (err) {
       setSpinError("Çark çevrilirken ağ bağlantısı hatası oluştu.");
@@ -432,16 +436,12 @@ export default function UserHomePage() {
     if (!activeWheelCampaign || !selectedPrize || !spinPromoCode || claimingPrize) return;
     setSpinError(null);
 
-    if (!firstName.trim() || !lastName.trim()) {
-      setSpinError("Lütfen isim ve soyisminizi giriniz.");
-      return;
-    }
-    if (fullPhone.replace(/\D/g, "").length < 10) {
-      setSpinError("Lütfen geçerli bir telefon numarası giriniz (en az 10 hane).");
+    if (firstName.trim().length !== 1 || lastName.trim().length !== 1) {
+      setSpinError("Lütfen isminizin ve soyisminizin sadece ilk harfini giriniz.");
       return;
     }
     if (phoneLastFour.replace(/\D/g, "").length !== 4) {
-      setSpinError("Telefon numaranızın son 4 hanesi doğrulamak için zorunludur.");
+      setSpinError("Lütfen telefon numaranızın son 4 hanesini giriniz.");
       return;
     }
 
@@ -452,9 +452,8 @@ export default function UserHomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           campaignId: activeWheelCampaign.id,
-          firstName,
-          lastName,
-          fullPhone,
+          firstName: firstName.trim().toUpperCase(),
+          lastName: lastName.trim().toUpperCase(),
           phoneLastFour,
           cookieId: visitorId,
           action: "claim",
@@ -989,41 +988,24 @@ export default function UserHomePage() {
                 // Success state
                 if (actionSuccess) {
                   return (
-                    <div className="text-center py-6 space-y-6">
-                      <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto border border-emerald-500/20">
-                        <CheckCircle2 className="w-10 h-10 animate-bounce" />
+                    <div className="text-center py-8 space-y-6">
+                      <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto border border-emerald-500/20">
+                        <CheckCircle2 className="w-12 h-12" />
                       </div>
                       
                       <div className="space-y-2">
-                        <h4 className="text-2xl font-black text-emerald-600">Tebrikler, Katıldınız!</h4>
+                        <h4 className="text-3xl font-black text-emerald-600">Kaydınız Alınmıştır!</h4>
                         <p className="text-sm opacity-85 leading-relaxed px-4">
-                          Kaydınız başarıyla veritabanımıza eklenmiştir. WhatsApp üzerinden detaylı bilgi edinmek ve haklarınızı doğrulamak için aşağıdaki butonu kullanarak direkt yazabilirsiniz.
+                          Kampanyaya başarıyla katılım sağladınız. Kazananlar listemize eklendiniz. Çarkı çevirerek ödül kazanma şansını yakalayabilirsiniz.
                         </p>
                       </div>
 
-                      <div className="p-4 bg-teal-50 dark:bg-slate-800 rounded-2xl border border-teal-100 dark:border-teal-900">
-                        <p className="text-[11px] uppercase font-bold opacity-75">Kampanya Detayı</p>
-                        <p className="text-base font-black text-teal-600">{activeJoinCampaign.name}</p>
-                        <p className="text-xs font-semibold mt-1 opacity-75">İsim: {firstName} {lastName}</p>
-                      </div>
-
-                      <div className="flex flex-col gap-2">
-                        <a
-                          href={getWhatsAppUrl(ARYA_WHATSAPP_PHONE, `Merhaba Arya Terzi, "${activeJoinCampaign.name}" kampanyasına katıldım. Bilgilerimi doğrulayıp haklarımı almak istiyorum. İsim: ${firstName} ${lastName}, Tel son 4 hane: ${phoneLastFour}`)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="py-4 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg text-center flex items-center justify-center gap-2 btn-base"
-                        >
-                          <Phone className="w-4 h-4" /> Hemen WhatsApp'tan Yaz
-                        </a>
-                        
-                        <button
-                          onClick={() => setActiveJoinCampaign(null)}
-                          className="py-3 px-6 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 font-bold text-xs uppercase rounded-2xl transition-all btn-base"
-                        >
-                          Kapat
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => setActiveJoinCampaign(null)}
+                        className="w-full py-4 px-6 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg btn-base"
+                      >
+                        Tamam
+                      </button>
                     </div>
                   );
                 }
@@ -1040,44 +1022,33 @@ export default function UserHomePage() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Adınız</label>
+                        <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Adınızın Baş Harfi</label>
                         <input 
                           type="text" 
                           required
+                          maxLength={1}
                           value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          placeholder="Örn. Ahmet"
-                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
+                          onChange={(e) => setFirstName(e.target.value.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ]/g, "").toUpperCase())}
+                          placeholder="Örn. A"
+                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold text-center text-lg tracking-widest input-field"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Soyadınız</label>
+                        <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Soyadınızın Baş Harfi</label>
                         <input 
                           type="text" 
                           required
+                          maxLength={1}
                           value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          placeholder="Örn. Yılmaz"
-                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
+                          onChange={(e) => setLastName(e.target.value.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ]/g, "").toUpperCase())}
+                          placeholder="Örn. Y"
+                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold text-center text-lg tracking-widest input-field"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Telefon Numaranız</label>
-                      <input 
-                        type="tel" 
-                        required
-                        value={fullPhone}
-                        onChange={(e) => setFullPhone(e.target.value)}
-                        placeholder="Örn. 0555 123 45 67"
-                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
-                      />
-                      <p className="text-[10px] opacity-60 mt-1">İletişime geçmek ve WhatsApp doğrulaması için gereklidir.</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Telefonun Son 4 Hanesi (Güvenlik)</label>
+                      <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Telefonunuzun Son 4 Hanesi</label>
                       <input 
                         type="text" 
                         required
@@ -1087,7 +1058,7 @@ export default function UserHomePage() {
                         placeholder="Örn. 4567"
                         className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-mono font-black text-center text-lg tracking-widest input-field"
                       />
-                      <p className="text-[10px] opacity-60 mt-1">Çift katılımları ve hileyi önlemek amacıyla teyit amaçlı istenir.</p>
+                      <p className="text-[10px] opacity-60 mt-1">Kaydınızı teyit etmek için telefon numaranızın son 4 hanesi yeterlidir.</p>
                     </div>
 
                     <button
@@ -1104,7 +1075,7 @@ export default function UserHomePage() {
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                           KAYDEDİLİYOR...
                         </span>
-                      ) : "Katılımı Kaydet ve Rezervasyon Yap!"}
+                      ) : "Katıl!"}
                     </button>
                   </form>
                 );
@@ -1219,18 +1190,55 @@ export default function UserHomePage() {
                   
                   {/* Dynamic SVG Wheel Graphic */}
                   <div className="relative w-56 h-56 sm:w-72 sm:h-72 md:w-80 md:h-80">
-                    {/* Arrow Pointer */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-2 sm:-mt-4 z-20 w-0 h-0 border-l-[10px] sm:border-l-[15px] border-l-transparent border-r-[10px] sm:border-r-[15px] border-r-transparent border-t-[18px] sm:border-t-[25px] border-t-red-600 drop-shadow-md"></div>
+                    {/* Outer glow ring */}
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-400/20 via-yellow-300/10 to-amber-500/20 blur-2xl animate-pulse"></div>
+                    
+                    {/* Arrow Pointer - redesigned */}
+                    <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none">
+                      {/* Arrow stem */}
+                      <div className="w-1.5 h-3 sm:w-2 sm:h-4 bg-gradient-to-b from-amber-300 to-amber-600 rounded-t-full shadow-lg"></div>
+                      {/* Arrow head */}
+                      <div className="w-0 h-0 border-l-[10px] sm:border-l-[15px] border-l-transparent border-r-[10px] sm:border-r-[15px] border-r-transparent border-t-[16px] sm:border-t-[24px] border-t-amber-400 drop-shadow-[0_3px_8px_rgba(251,191,36,0.8)]"></div>
+                      {/* Arrow glow dot */}
+                      <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.9)] -mt-1"></div>
+                    </div>
                     
                     {/* Rotating Wheel Container */}
                     <div 
                       style={{ 
                         transform: `rotate(${rotationDegrees}deg)`,
-                        transition: isSpinning ? "transform 5s cubic-bezier(0.15, 0.85, 0.35, 1)" : "none"
+                        transition: isSpinning ? `transform ${(() => { const p = activeWheelCampaign.prizes; try { return Math.max(4, Math.min(7, JSON.parse(p).length * 0.7)); } catch(e) { return 5; } })()}s cubic-bezier(0.08, 0.75, 0.35, 1)` : "none"
                       }}
-                      className="w-full h-full rounded-full border-8 border-teal-600 shadow-2xl relative overflow-hidden bg-white dark:bg-slate-800"
+                      className="w-full h-full rounded-full shadow-[0_0_40px_rgba(0,0,0,0.35)] relative overflow-hidden"
                     >
-                      {/* SVG representation of segmented wheel */}
+                      {/* Outer chrome ring */}
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-500 p-[7px] shadow-[inset_0_0_10px_rgba(0,0,0,0.3)]">
+                        <div className="w-full h-full rounded-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
+                      </div>
+                      
+                      {/* Decorative outer peg ring */}
+                      <div className="absolute inset-[5px] rounded-full z-10">
+                        <svg viewBox="0 0 100 100" className="w-full h-full">
+                          {(() => {
+                            const pegCount = 24;
+                            return Array.from({length: pegCount}).map((_, i) => {
+                              const a = (i * 360 / pegCount) * Math.PI / 180;
+                              const x = 50 + 46 * Math.cos(a);
+                              const y = 50 + 46 * Math.sin(a);
+                              const isEven = i % 2 === 0;
+                              return (
+                                <g key={i}>
+                                  <circle cx={x} cy={y} r="1.8" fill={isEven ? "#fbbf24" : "#f59e0b"} opacity={isEven ? "0.9" : "0.6"} />
+                                  <circle cx={x} cy={y} r="0.6" fill="#ffffff" opacity="0.5" />
+                                </g>
+                              );
+                            });
+                          })()}
+                        </svg>
+                      </div>
+                      
+                      {/* SVG segmented wheel */}
+                      <div className="absolute inset-[11px] rounded-full overflow-hidden shadow-inner">
                       <svg viewBox="0 0 100 100" className="w-full h-full">
                         {(() => {
                           let prizesList: Prize[] = [];
@@ -1242,16 +1250,24 @@ export default function UserHomePage() {
                           const len = prizesList.length || 1;
                           const angle = 360 / len;
 
-                          const colors = [
-                            "#0d9488", "#f59e0b", "#14b8a6", "#10b981", 
-                            "#f43f5e", "#6366f1", "#8b5cf6", "#ec4899"
+                          // Vivid wheel-appropriate color palette
+                          const wheelColors = [
+                            "#e11d48", // red
+                            "#f59e0b", // amber
+                            "#3b82f6", // blue
+                            "#10b981", // emerald
+                            "#8b5cf6", // violet
+                            "#f97316", // orange
+                            "#06b6d4", // cyan
+                            "#ec4899", // pink
+                            "#84cc16", // lime
+                            "#6366f1", // indigo
                           ];
 
                           return prizesList.map((p, idx) => {
                             const startAngle = idx * angle;
                             const endAngle = (idx + 1) * angle;
                             
-                            // SVG polar to cartesian helper
                             const rad = (degree: number) => (degree - 90) * Math.PI / 180;
                             const x1 = 50 + 50 * Math.cos(rad(startAngle));
                             const y1 = 50 + 50 * Math.sin(rad(startAngle));
@@ -1259,37 +1275,101 @@ export default function UserHomePage() {
                             const y2 = 50 + 50 * Math.sin(rad(endAngle));
                             
                             const d = `M 50 50 L ${x1} ${y1} A 50 50 0 0 1 ${x2} ${y2} Z`;
-                            const color = colors[idx % colors.length];
+                            const baseColor = wheelColors[idx % wheelColors.length];
+                            
+                            // 3D segment with higher opacity at the outer rim for curved look
+                            const gradientId = `seg-${p.id}`;
+                            const lightColor = baseColor;
+                            const darkColor = baseColor.replace(/[\dA-Fa-f]{2}$/, '99');
+                            // parse to darken
+                            const r = parseInt(baseColor.slice(1,3), 16);
+                            const g = parseInt(baseColor.slice(3,5), 16);
+                            const b = parseInt(baseColor.slice(5,7), 16);
+                            const darkR = Math.max(0, r - 50);
+                            const darkG = Math.max(0, g - 50);
+                            const darkB = Math.max(0, b - 50);
+                            const darkHex = `#${darkR.toString(16).padStart(2,'0')}${darkG.toString(16).padStart(2,'0')}${darkB.toString(16).padStart(2,'0')}`;
 
-                            // Label angle
+                            // Label position
                             const textAngle = startAngle + angle / 2;
                             const textRad = (textAngle - 90) * Math.PI / 180;
-                            const tx = 50 + 32 * Math.cos(textRad);
-                            const ty = 50 + 32 * Math.sin(textRad);
+                            const textRadius = 50 - (angle > 40 ? 16 : angle > 25 ? 14 : 12);
+                            const tx = 50 + textRadius * Math.cos(textRad);
+                            const ty = 50 + textRadius * Math.sin(textRad);
+
+                            // Scale font based on segment size
+                            const fontSize = angle > 60 ? 3.8 : angle > 40 ? 3.2 : angle > 25 ? 2.8 : 2.4;
+                            const maxChars = angle > 60 ? 18 : angle > 40 ? 14 : angle > 25 ? 10 : 8;
 
                             return (
                               <g key={p.id}>
-                                <path d={d} fill={color} stroke="#ffffff" strokeWidth="0.5" />
+                                <defs>
+                                  <linearGradient id={gradientId} x1="0%" y1="0%" x2="50%" y2="100%">
+                                    <stop offset="0%" stopColor={lightColor} />
+                                    <stop offset="100%" stopColor={darkHex} />
+                                  </linearGradient>
+                                </defs>
+                                <path d={d} fill={`url(#${gradientId})`} stroke="rgba(255,255,255,0.4)" strokeWidth="1.2" />
+                                {/* Segment inner highlight for 3D effect */}
+                                <path 
+                                  d={d} 
+                                  fill="none" 
+                                  stroke="rgba(255,255,255,0.15)" 
+                                  strokeWidth="0.5" 
+                                  transform={`scale(0.96) translate(2, 2)`} 
+                                />
                                 <text 
                                   x={tx} 
                                   y={ty} 
                                   fill="#ffffff" 
-                                  fontSize="3" 
-                                  fontWeight="bold" 
+                                  fontSize={fontSize} 
+                                  fontWeight="900" 
                                   textAnchor="middle"
+                                  dominantBaseline="middle"
                                   transform={`rotate(${textAngle}, ${tx}, ${ty})`}
                                   className="select-none font-sans"
+                                  style={{ textShadow: "0 2px 4px rgba(0,0,0,0.6)" }}
                                 >
-                                  {p.text.length > 12 ? p.text.substring(0, 11) + ".." : p.text}
+                                  {p.text.length > maxChars ? p.text.substring(0, maxChars - 1) + "…" : p.text}
                                 </text>
                               </g>
                             );
                           });
                         })()}
-                        {/* Center hub */}
-                        <circle cx="50" cy="50" r="10" fill="#ffffff" stroke="#0d9488" strokeWidth="2" />
-                        <circle cx="50" cy="50" r="6" fill="#f59e0b" />
                       </svg>
+                      </div>
+                      
+                      {/* Center hub - premium 4-layer design */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        {/* Layer 1: outer gold rim */}
+                        <div className="w-[24%] h-[24%] rounded-full bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-600 shadow-[0_0_20px_rgba(251,191,36,0.6),inset_0_0_8px_rgba(0,0,0,0.2)] flex items-center justify-center">
+                          {/* Layer 2: dark ring */}
+                          <div className="w-[72%] h-[72%] rounded-full bg-gradient-to-br from-slate-800 to-slate-950 flex items-center justify-center shadow-inner">
+                            {/* Layer 3: inner gold */}
+                            <div className="w-[68%] h-[68%] rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-[0_0_6px_rgba(251,191,36,0.4)]">
+                              {/* Layer 4: center star dot */}
+                              <div className="w-[40%] h-[40%] rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Prize list legend */}
+                  <div className="w-full max-w-sm">
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      {(() => {
+                        let prizesList: Prize[] = [];
+                        try { prizesList = JSON.parse(activeWheelCampaign.prizes); } catch (e) {}
+                        const wheelColors = ["#e11d48","#f59e0b","#3b82f6","#10b981","#8b5cf6","#f97316","#06b6d4","#ec4899","#84cc16","#6366f1"];
+                        return prizesList.slice(0, 8).map((p, idx) => (
+                          <span key={p.id} className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/80 dark:bg-slate-800/80 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: wheelColors[idx % wheelColors.length] }}></span>
+                            {p.text.length > 12 ? p.text.substring(0, 11) + "…" : p.text}
+                          </span>
+                        ));
+                      })()}
                     </div>
                   </div>
 
@@ -1299,67 +1379,65 @@ export default function UserHomePage() {
                     className={`w-full max-w-sm py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-xl btn-base ${
                       isSpinning 
                         ? "bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed" 
-                        : "bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-slate-950 hover:scale-[1.02]"
+                        : "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-600 hover:via-yellow-500 hover:to-amber-600 text-slate-950 hover:scale-[1.02] shadow-amber-500/30"
                     }`}
+                    style={!isSpinning ? { backgroundSize: "200% 100%", animation: "shimmer 2s ease-in-out infinite" } : {}}
                   >
-                    {isSpinning ? "ÇARK DÖNÜYOR..." : "ŞİMDİ ÇARKIVER!"}
+                    {isSpinning ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></div>
+                        ÇARK DÖNÜYOR...
+                      </span>
+                    ) : "🎯 ŞİMDİ ÇARKIVER!"}
                   </button>
                 </div>
               )}
 
               {spinState === "drawn" && selectedPrize && (
                 <div className="w-full max-w-md space-y-6 animate-scale-up">
-                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-3xl p-6 text-center space-y-3">
-                    <span className="text-5xl">🎉</span>
-                    <h4 className="text-lg font-bold opacity-75 uppercase">Tebrikler! Kazandınız!</h4>
+                  <div className="bg-gradient-to-br from-amber-500/20 to-yellow-500/10 border-2 border-amber-500/30 rounded-3xl p-8 text-center space-y-4">
+                    <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto border-2 border-amber-500/30">
+                      <span className="text-4xl">🎉</span>
+                    </div>
+                    <h4 className="text-lg font-bold opacity-80 uppercase tracking-wider">Tebrikler! Kazandınız!</h4>
                     <p className="text-3xl font-black text-amber-500 tracking-tight">
                       {selectedPrize.text}
                     </p>
-                    <p className="text-xs opacity-75 max-w-xs mx-auto">
-                      Bu ödülü adınıza tescilleyip benzersiz promosyon kodunuzu almak için lütfen bilgilerinizi eksiksiz girin.
+                    <p className="text-xs opacity-75 max-w-xs mx-auto leading-relaxed">
+                      Ödülünüzi tescilleyip promosyon kodunuzu almak için bilgilerinizi girin.
                     </p>
                   </div>
 
                   <form onSubmit={handleClaimSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] font-black uppercase mb-1">Adınız</label>
+                        <label className="block text-[10px] font-black uppercase mb-1">Adınızın Baş Harfi</label>
                         <input 
                           type="text" 
                           required
+                          maxLength={1}
                           value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          placeholder="Ahmet"
-                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 input-field"
+                          onChange={(e) => setFirstName(e.target.value.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ]/g, "").toUpperCase())}
+                          placeholder="A"
+                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-500 input-field"
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-black uppercase mb-1">Soyadınız</label>
+                        <label className="block text-[10px] font-black uppercase mb-1">Soyadınızın Baş Harfi</label>
                         <input 
                           type="text" 
                           required
+                          maxLength={1}
                           value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          placeholder="Yılmaz"
-                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 input-field"
+                          onChange={(e) => setLastName(e.target.value.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ]/g, "").toUpperCase())}
+                          placeholder="Y"
+                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-500 input-field"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-black uppercase mb-1">Telefon Numaranız</label>
-                      <input 
-                        type="tel" 
-                        required
-                        value={fullPhone}
-                        onChange={(e) => setFullPhone(e.target.value)}
-                        placeholder="0555 123 45 67"
-                        className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 input-field"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-black uppercase mb-1">Telefonun Son 4 Hanesi (Doğrulama)</label>
+                      <label className="block text-[10px] font-black uppercase mb-1">Telefonunuzun Son 4 Hanesi</label>
                       <input 
                         type="text" 
                         required
@@ -1369,6 +1447,7 @@ export default function UserHomePage() {
                         placeholder="4567"
                         className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-center font-mono font-black text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-500 input-field"
                       />
+                      <p className="text-[10px] opacity-60 mt-1">Ödülü tescilleyip size özel kod vermek için yeterlidir.</p>
                     </div>
 
                     <button
@@ -1377,15 +1456,15 @@ export default function UserHomePage() {
                       className={`w-full py-4 font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-xl btn-base ${
                         claimingPrize
                           ? "bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed"
-                          : "bg-teal-600 hover:bg-teal-700 text-white hover:scale-[1.01]"
+                          : "bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 hover:scale-[1.01]"
                       }`}
                     >
                       {claimingPrize ? (
                         <span className="flex items-center justify-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></div>
                           KAYDEDİLİYOR...
                         </span>
-                      ) : "Ödülümü Adıma Kaydet!"}
+                      ) : "Ödülü Al!"}
                     </button>
                   </form>
                 </div>
