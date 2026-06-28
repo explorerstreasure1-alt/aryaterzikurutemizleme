@@ -468,7 +468,7 @@ export default function AdminControlCenter() {
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}
                   placeholder="Yönetici Şifrenizi Girin"
-                  className="w-full px-4 py-3 border border-teal-100 rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 focus:outline-none font-bold text-center text-lg tracking-widest text-teal-900"
+                  className="w-full px-4 py-3 border border-teal-100 rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 focus:outline-none font-bold text-center text-lg tracking-widest text-teal-900 input-field"
                 />
               </div>
 
@@ -485,7 +485,7 @@ export default function AdminControlCenter() {
 
               <button 
                 type="submit"
-                className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg hover:scale-[1.01]"
+                className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg hover:scale-[1.01] btn-base"
               >
                 KONTROL PANELİNE GİRİŞ YAP
               </button>
@@ -527,7 +527,7 @@ export default function AdminControlCenter() {
           <div className="flex flex-wrap items-center gap-2">
             <button 
               onClick={fetchDashboardData}
-              className="p-2 bg-teal-800 hover:bg-teal-700 rounded-xl text-teal-200 transition-all hover:text-white"
+              className="p-2 bg-teal-800 hover:bg-teal-700 rounded-xl text-teal-200 transition-all hover:text-white btn-base"
               title="Yenile"
             >
               <RefreshCw className="w-4 h-4" />
@@ -536,14 +536,14 @@ export default function AdminControlCenter() {
             <a 
               href="/" 
               target="_blank"
-              className="px-4 py-2 bg-teal-800 hover:bg-teal-700 rounded-xl text-xs font-bold transition-all text-teal-200 hover:text-white flex items-center gap-1"
+              className="px-4 py-2 bg-teal-800 hover:bg-teal-700 rounded-xl text-xs font-bold transition-all text-teal-200 hover:text-white flex items-center gap-1 btn-base"
             >
               Ana Sayfayı Gör <ExternalLink className="w-3.5 h-3.5" />
             </a>
 
             <button 
               onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-xl text-xs font-bold transition-all"
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-xl text-xs font-bold transition-all btn-base"
             >
               Güvenli Çıkış
             </button>
@@ -561,28 +561,28 @@ export default function AdminControlCenter() {
             
             <button
               onClick={() => { setActiveTab("dashboard"); setIsCreating(false); }}
-              className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${activeTab === "dashboard" ? "bg-teal-600 text-white shadow-md shadow-teal-600/10" : "text-slate-600 hover:bg-teal-50"}`}
+              className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 btn-base ${activeTab === "dashboard" ? "bg-teal-600 text-white shadow-md shadow-teal-600/10" : "text-slate-600 hover:bg-teal-50"}`}
             >
               <Grid className="w-4 h-4" /> Gösterge Tablosu
             </button>
 
             <button
               onClick={() => { setActiveTab("campaigns"); setIsCreating(false); }}
-              className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${activeTab === "campaigns" ? "bg-teal-600 text-white shadow-md shadow-teal-600/10" : "text-slate-600 hover:bg-teal-50"}`}
+              className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 btn-base ${activeTab === "campaigns" ? "bg-teal-600 text-white shadow-md shadow-teal-600/10" : "text-slate-600 hover:bg-teal-50"}`}
             >
               <Calendar className="w-4 h-4" /> Kampanyaları Yönet
             </button>
 
             <button
               onClick={() => { setActiveTab("participations"); setIsCreating(false); }}
-              className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${activeTab === "participations" ? "bg-teal-600 text-white shadow-md shadow-teal-600/10" : "text-slate-600 hover:bg-teal-50"}`}
+              className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 btn-base ${activeTab === "participations" ? "bg-teal-600 text-white shadow-md shadow-teal-600/10" : "text-slate-600 hover:bg-teal-50"}`}
             >
               <Users className="w-4 h-4" /> Kampanya Katılımcıları
             </button>
 
             <button
               onClick={() => { setActiveTab("winners"); setIsCreating(false); }}
-              className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${activeTab === "winners" ? "bg-teal-600 text-white shadow-md shadow-teal-600/10" : "text-slate-600 hover:bg-teal-50"}`}
+              className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 btn-base ${activeTab === "winners" ? "bg-teal-600 text-white shadow-md shadow-teal-600/10" : "text-slate-600 hover:bg-teal-50"}`}
             >
               <Gift className="w-4 h-4" /> Çark Kazananları
             </button>
@@ -685,7 +685,7 @@ export default function AdminControlCenter() {
                 <div className="bg-white rounded-3xl p-6 border border-teal-50 shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="font-extrabold text-sm tracking-tight">En Son Kayıt Olanlar</h4>
-                    <button onClick={() => setActiveTab("participations")} className="text-xs font-bold text-teal-600 hover:underline">Tümünü Gör</button>
+                    <button onClick={() => setActiveTab("participations")} className="text-xs font-bold text-teal-600 hover:underline btn-base">Tümünü Gör</button>
                   </div>
                   <div className="divide-y divide-slate-100 text-xs">
                     {participationsList.slice(0, 5).map((p, idx) => {
@@ -710,7 +710,7 @@ export default function AdminControlCenter() {
                 <div className="bg-white rounded-3xl p-6 border border-teal-50 shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="font-extrabold text-sm tracking-tight">Son Kazananlar</h4>
-                    <button onClick={() => setActiveTab("winners")} className="text-xs font-bold text-teal-600 hover:underline">Tümünü Gör</button>
+                    <button onClick={() => setActiveTab("winners")} className="text-xs font-bold text-teal-600 hover:underline btn-base">Tümünü Gör</button>
                   </div>
                   <div className="divide-y divide-slate-100 text-xs">
                     {winnersList.slice(0, 5).map((w, idx) => (
@@ -749,7 +749,7 @@ export default function AdminControlCenter() {
                     setSelectedImages([]);
                     setPrizes(JSON.parse(JSON.stringify(DEFAULT_PRIZES)));
                   }}
-                  className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow flex items-center gap-1.5"
+                  className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow flex items-center gap-1.5 btn-base"
                 >
                   <Plus className="w-4 h-4" /> Yeni Kampanya Oluştur
                 </button>
@@ -764,7 +764,7 @@ export default function AdminControlCenter() {
                     </h4>
                     <button 
                       onClick={() => { setIsCreating(false); setEditingCampaign(null); }}
-                      className="text-xs font-bold text-slate-500 hover:text-slate-700"
+                      className="text-xs font-bold text-slate-500 hover:text-slate-700 btn-base"
                     >
                       Kapat
                     </button>
@@ -787,7 +787,7 @@ export default function AdminControlCenter() {
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           placeholder="Örn. Arya Süper Kış Sezonu Kampanyası"
-                          className="w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-bold"
+                          className="input-field w-full px-4 py-2.5"
                         />
                       </div>
                       <div>
@@ -795,7 +795,7 @@ export default function AdminControlCenter() {
                         <select 
                           value={badge}
                           onChange={(e) => setBadge(e.target.value)}
-                          className="w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-bold"
+                          className="input-field w-full px-4 py-2.5"
                         >
                           <option value="Flaş">Flaş</option>
                           <option value="Haftalık">Haftalık</option>
@@ -814,7 +814,7 @@ export default function AdminControlCenter() {
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="Müşteriyi çekecek, dev indirimi ve detayları anlatan reklam metni..."
-                        className="w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-semibold"
+                        className="input-field w-full px-4 py-2.5"
                       ></textarea>
                     </div>
 
@@ -826,7 +826,7 @@ export default function AdminControlCenter() {
                           required
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
-                          className="w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-bold"
+                          className="input-field w-full px-4 py-2.5"
                         />
                       </div>
                       <div>
@@ -836,7 +836,7 @@ export default function AdminControlCenter() {
                           required
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
-                          className="w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-bold"
+                          className="input-field w-full px-4 py-2.5"
                         />
                       </div>
                       <div>
@@ -847,7 +847,7 @@ export default function AdminControlCenter() {
                           value={quota}
                           onChange={(e) => setQuota(parseInt(e.target.value) || 100)}
                           placeholder="Örn. 500"
-                          className="w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-bold"
+                          className="input-field w-full px-4 py-2.5"
                         />
                       </div>
                     </div>
@@ -873,7 +873,7 @@ export default function AdminControlCenter() {
                         <button
                           type="button"
                           onClick={() => setPrizes(JSON.parse(JSON.stringify(DEFAULT_PRIZES)))}
-                          className="text-[10px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 px-3 py-1.5 rounded-lg border border-amber-500/20 font-black uppercase"
+                          className="text-[10px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 px-3 py-1.5 rounded-lg border border-amber-500/20 font-black uppercase btn-base"
                         >
                           Varsayılan Paket Yükle
                         </button>
@@ -894,7 +894,7 @@ export default function AdminControlCenter() {
                                   setPrizes(updated);
                                 }}
                                 placeholder="Ödül Başlığı (örn. %10 İndirim)"
-                                className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-black inline-block w-40"
+                                className="input-field px-2 py-1.5 inline-block w-40"
                               />
                             </div>
                             <div>
@@ -910,7 +910,7 @@ export default function AdminControlCenter() {
                                   updated[idx].probability = parseFloat(e.target.value) || 0;
                                   setPrizes(updated);
                                 }}
-                                className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-black w-16"
+                                className="input-field px-2 py-1.5 w-16"
                               />
                             </div>
                             <div>
@@ -925,7 +925,7 @@ export default function AdminControlCenter() {
                                   setPrizes(updated);
                                 }}
                                 placeholder="KOD"
-                                className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-bold w-20"
+                                className="input-field px-2 py-1.5 w-20"
                               />
                             </div>
                           </div>
@@ -948,13 +948,13 @@ export default function AdminControlCenter() {
                       <button
                         type="button"
                         onClick={() => { setIsCreating(false); setEditingCampaign(null); }}
-                        className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-extrabold"
+                        className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-extrabold btn-base"
                       >
                         Vazgeç
                       </button>
                       <button
                         type="submit"
-                        className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-black uppercase tracking-wider"
+                        className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-black uppercase tracking-wider btn-base"
                       >
                         {editingCampaign ? "Güncelle ve Kaydet" : "Kampanyayı Yayınla"}
                       </button>
@@ -1021,7 +1021,7 @@ export default function AdminControlCenter() {
                             <td className="p-4 text-center">
                               <button
                                 onClick={() => handleToggleActive(c)}
-                                className={`px-2.5 py-1 rounded-full font-bold text-[10px] transition-all ${
+                                className={`px-2.5 py-1 rounded-full font-bold text-[10px] transition-all btn-base ${
                                   c.active 
                                     ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" 
                                     : "bg-slate-100 text-slate-500 hover:bg-slate-200"
@@ -1032,20 +1032,20 @@ export default function AdminControlCenter() {
                             </td>
                             <td className="p-4 text-right">
                               <div className="flex items-center justify-end space-x-1">
-                                <button 
-                                  onClick={() => openEditModal(c)}
-                                  className="p-1.5 hover:bg-teal-50 text-teal-600 rounded-lg"
-                                  title="Düzenle"
-                                >
-                                  <Edit3 className="w-4 h-4" />
-                                </button>
-                                <button 
-                                  onClick={() => handleDeleteCampaign(c.id)}
-                                  className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg"
-                                  title="Sil"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                              <button 
+                                onClick={() => openEditModal(c)}
+                                className="p-1.5 hover:bg-teal-50 text-teal-600 rounded-lg btn-base"
+                                title="Düzenle"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteCampaign(c.id)}
+                                className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg btn-base"
+                                title="Sil"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                               </div>
                             </td>
                           </tr>
@@ -1078,7 +1078,7 @@ export default function AdminControlCenter() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => exportToCSV("participations")}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase rounded-xl transition-all shadow flex items-center gap-1.5"
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase rounded-xl transition-all shadow flex items-center gap-1.5 btn-base"
                   >
                     <FileSpreadsheet className="w-4 h-4" /> Excel / CSV Aktar
                   </button>
@@ -1092,7 +1092,7 @@ export default function AdminControlCenter() {
                   placeholder="İsim, soyisim veya telefon son 4 hanesine göre listeyi filtreleyin..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:outline-none focus:ring-1 focus:ring-teal-600 text-xs font-semibold"
+                  className="input-field w-full px-4 py-2.5"
                 />
               </div>
 
@@ -1157,7 +1157,7 @@ export default function AdminControlCenter() {
                                   href={whatsappDirectUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold px-3 py-1.5 rounded-lg border border-emerald-100 transition-all text-[10px]"
+                                  className="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold px-3 py-1.5 rounded-lg border border-emerald-100 transition-all text-[10px] btn-base"
                                 >
                                   WhatsApp Mesajı <ExternalLink className="w-3 h-3" />
                                 </a>
@@ -1192,7 +1192,7 @@ export default function AdminControlCenter() {
 
                 <button
                   onClick={() => exportToCSV("winners")}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase rounded-xl transition-all shadow flex items-center gap-1.5"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase rounded-xl transition-all shadow flex items-center gap-1.5 btn-base"
                 >
                   <FileSpreadsheet className="w-4 h-4" /> Excel / CSV Aktar
                 </button>
@@ -1205,7 +1205,7 @@ export default function AdminControlCenter() {
                   placeholder="İsim, soyisim, ödül veya kupon koduna göre listeyi filtreleyin..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:outline-none focus:ring-1 focus:ring-teal-600 text-xs font-semibold"
+                  className="input-field w-full px-4 py-2.5"
                 />
               </div>
 
@@ -1261,7 +1261,7 @@ export default function AdminControlCenter() {
                               <td className="p-4 text-center">
                                 <button
                                   onClick={() => handleTogglePromoUsed(w.id, w.used)}
-                                  className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${
+                                  className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border btn-base ${
                                     w.used 
                                       ? "bg-slate-100 text-slate-400 border-slate-200" 
                                       : "bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-500 shadow-sm"
@@ -1281,7 +1281,7 @@ export default function AdminControlCenter() {
                                   href={whatsappDirectUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold px-3 py-1.5 rounded-lg border border-emerald-100 transition-all text-[10px]"
+                                  className="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold px-3 py-1.5 rounded-lg border border-emerald-100 transition-all text-[10px] btn-base"
                                 >
                                   Kazananı Ara/Yaz <ExternalLink className="w-3 h-3" />
                                 </a>
