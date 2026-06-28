@@ -247,7 +247,9 @@ export default function UserHomePage() {
   });
 
   // Action: Open join campaign modal
+  // FIX #3: Clear wheel modal when opening join modal (mutual exclusion)
   const handleOpenJoin = (campaign: Campaign) => {
+    setActiveWheelCampaign(null);
     setActiveJoinCampaign(campaign);
     setFirstName("");
     setLastName("");
@@ -320,7 +322,9 @@ export default function UserHomePage() {
   };
 
   // Action: Wheel Spin initiation
+  // FIX #3: Clear join modal when opening wheel modal (mutual exclusion)
   const handleOpenWheel = (campaign: Campaign) => {
+    setActiveJoinCampaign(null);
     setActiveWheelCampaign(campaign);
     setIsSpinning(false);
     setSelectedPrize(null);
@@ -1278,9 +1282,9 @@ export default function UserHomePage() {
                             const baseColor = wheelColors[idx % wheelColors.length];
                             
                             // 3D segment with higher opacity at the outer rim for curved look
-                            const gradientId = `seg-${p.id}`;
+                            const gradientId = `seg-${p.id}-${activeWheelCampaign.id}`;
                             const lightColor = baseColor;
-                            const darkColor = baseColor.replace(/[\dA-Fa-f]{2}$/, '99');
+                            // FIX #4: Removed unused `darkColor` variable — actual dark hex is computed via r/g/b below
                             // parse to darken
                             const r = parseInt(baseColor.slice(1,3), 16);
                             const g = parseInt(baseColor.slice(3,5), 16);
