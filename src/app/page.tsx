@@ -143,15 +143,15 @@ export default function UserHomePage() {
       const start = new Date(c.startDate).getTime();
       const now = Date.now();
 
-      // startDate henüz gelmediyse
-      if (now < start) {
-        newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: -1, status: "Başlamadı" };
+      // Tarih NaN koruması (önce kontrol et, yoksa now < start NaN ile karşılaştırma yapar)
+      if (isNaN(end) || isNaN(start)) {
+        newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: 0, status: "Hatalı Tarih" };
         return;
       }
 
-      // Tarih NaN koruması
-      if (isNaN(end) || isNaN(start)) {
-        newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: 0, status: "Hatalı Tarih" };
+      // startDate henüz gelmediyse
+      if (now < start) {
+        newTimers[c.id] = { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: -1, status: "Başlamadı" };
         return;
       }
 

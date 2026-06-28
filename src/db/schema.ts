@@ -1,18 +1,22 @@
 import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 
+// All timestamp columns use withTimezone: true to prevent timezone shift
+// Client sends ISO UTC strings (.toISOString()), server stores in UTC consistently
+const tz = { withTimezone: true };
+
 export const campaigns = pgTable("campaigns", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull(),
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
-  images: text("images").notNull(), // JSON string array of image URLs
+  startDate: timestamp("start_date", tz).notNull(),
+  endDate: timestamp("end_date", tz).notNull(),
+  images: text("images").notNull(),
   quota: integer("quota").notNull().default(500),
   quotaUsed: integer("quota_used").notNull().default(0),
-  badge: text("badge").notNull().default("Haftalık"), // e.g. "Flaş", "Haftalık", "Özel Gün"
-  prizes: text("prizes").notNull(), // JSON string of prize options with probabilities
+  badge: text("badge").notNull().default("Haftalık"),
+  prizes: text("prizes").notNull(),
   active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", tz).notNull().defaultNow(),
 });
 
 export const participations = pgTable("participations", {
@@ -24,7 +28,7 @@ export const participations = pgTable("participations", {
   phoneLastFour: text("phone_last_four").notNull(),
   ipAddress: text("ip_address").notNull(),
   cookieId: text("cookie_id").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", tz).notNull().defaultNow(),
 });
 
 export const spinners = pgTable("spinners", {
@@ -39,5 +43,5 @@ export const spinners = pgTable("spinners", {
   used: boolean("used").notNull().default(false),
   ipAddress: text("ip_address").notNull(),
   cookieId: text("cookie_id").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", tz).notNull().defaultNow(),
 });

@@ -335,6 +335,7 @@ export default function AdminControlCenter() {
     // Format dates to datetime-local compatible format
     const formatToDatetimeLocal = (dateStr: string) => {
       const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "";
       const pad = (num: number) => String(num).padStart(2, "0");
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     };
