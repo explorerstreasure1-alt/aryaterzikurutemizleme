@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { spinners, campaigns } from "@/db/schema";
-import { eq, and, or, sql } from "drizzle-orm";
+import { spinners, campaigns, participations } from "@/db/schema";
+import { eq, and, or, sql, gt } from "drizzle-orm";
 import { headers } from "next/headers";
 
 // Helper to send Telegram Notification if token is set
@@ -103,8 +103,26 @@ export async function POST(req: NextRequest) {
 
     // 1. ACTION: "draw" -> Pre-determine the prize server-side to prevent cheating
     if (action === "draw") {
-      // Anti-cheat check BEFORE draw
-      const existing = await db.select()
+      // Rate limiting: max 5 spin tries per IP per minute
+      const oneMinuteAgo = new Date(Date.now() - 60000);
+      const recentDraws = await db.select({ count: sql`count(*)` })
+        .from(spinners)
+        .where(
+          and(
+            eq(spinners.ipAddress, ipAddress),
+            gt(spinners.createdAt, oneMinuteAgo)
+          )
+        );
+      const recentDrawCount = Number(recentDraws[0]?.count || 0);
+      if (recentDrawCount >= 5) {
+        return NextResponse.json({ 
+          error: "Çok fazla çark çevirme denemesi!", 
+          message: "Ard arda çok fazla deneme yaptınız. Lütfen 1 dakika bekleyip tekrar deneyin." 
+        }, { status: 429 });
+      }
+
+      // Anti-cheat check BEFORE draw: already spun this campaign?
+      const existingSpin = await db.select()
         .from(spinners)
         .where(
           and(
@@ -116,15 +134,36 @@ export async function POST(req: NextRequest) {
           )
         );
 
-      if (existing.length > 0) {
+      if (existingSpin.length > 0) {
         return NextResponse.json({ 
           error: "Zaten Çarkı Çevirdiniz!", 
           message: "Bu kampanya için çark çevirme hakkınızı zaten kullandınız. Yeni kampanyalarımızı takip etmeye devam edin!" 
         }, { status: 400 });
       }
 
+      // Participation check: user must have joined the campaign first
+      const hasJoined = await db.select()
+        .from(participations)
+        .where(
+          and(
+            eq(participations.campaignId, parsedCampaignId),
+            or(
+              eq(participations.ipAddress, ipAddress),
+              eq(participations.cookieId, cookieId || "never_matches"),
+              eq(participations.phoneLastFour, body.phoneLastFour || "never_matches")
+            )
+          )
+        );
+
+      if (hasJoined.length === 0) {
+        return NextResponse.json({ 
+          error: "Önce Kampanyaya Katılın!", 
+          message: "Çarkı çevirmeden önce lütfen 'Kampanyaya Katıl' butonuna tıklayarak kaydolun." 
+        }, { status: 400 });
+      }
+
       // Parse prizes
-      let prizeOptions = [];
+      let prizeOptions: any[] = [];
       try {
         prizeOptions = JSON.parse(campaign.prizes);
       } catch (e) {
@@ -135,14 +174,20 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Kampanyaya tanımlı ödül bulunamadı." }, { status: 400 });
       }
 
-      // Weighted random draw
-      const totalProbability = prizeOptions.reduce((acc: number, curr: any) => acc + (parseFloat(curr.probability) || 0), 0);
+      // Filter out zero-probability items for the draw
+      const drawPool = prizeOptions.filter((p: any) => (parseFloat(p.probability) || 0) > 0);
+      if (drawPool.length === 0) {
+        return NextResponse.json({ error: "Hiçbir ödülün olasılığı 0'dan büyük değil. Lütfen admin panelinden ödülleri kontrol edin." }, { status: 400 });
+      }
+
+      // Weighted random draw using only items with >0 probability
+      const totalProbability = drawPool.reduce((acc: number, curr: any) => acc + (parseFloat(curr.probability) || 0), 0);
       const randomValue = Math.random() * (totalProbability || 100);
 
       let accumulated = 0;
-      let chosenPrize = prizeOptions[0];
+      let chosenPrize = drawPool[0];
 
-      for (const p of prizeOptions) {
+      for (const p of drawPool) {
         accumulated += parseFloat(p.probability) || 0;
         if (randomValue <= accumulated) {
           chosenPrize = p;
@@ -163,9 +208,12 @@ export async function POST(req: NextRequest) {
 
     // 2. ACTION: "claim" -> Lock the won prize into database with user registration details
     if (action === "claim") {
-      if (!firstName || !lastName || !fullPhone || !phoneLastFour || !selectedPrizeText) {
+      if (!firstName || !lastName || !phoneLastFour || !selectedPrizeText) {
         return NextResponse.json({ error: "Lütfen tüm talep bilgilerini giriniz." }, { status: 400 });
       }
+
+      // If fullPhone is not provided (simplified claim), use phoneLastFour as placeholder
+      const resolvedFullPhone = fullPhone || `*******${phoneLastFour}`;
 
       // Final double check on anti-cheat
       const existing = await db.select()
@@ -176,7 +224,7 @@ export async function POST(req: NextRequest) {
             or(
               eq(spinners.ipAddress, ipAddress),
               eq(spinners.cookieId, cookieId || "never_matches"),
-              eq(spinners.fullPhone, fullPhone)
+              eq(spinners.fullPhone, resolvedFullPhone)
             )
           )
         );
@@ -193,9 +241,9 @@ export async function POST(req: NextRequest) {
       // Insert winner
       const newWin = await db.insert(spinners).values({
         campaignId: parsedCampaignId,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        fullPhone: fullPhone.trim(),
+        firstName: firstName.trim().toUpperCase(),
+        lastName: lastName.trim().toUpperCase(),
+        fullPhone: resolvedFullPhone.trim(),
         phoneLastFour: phoneLastFour.trim(),
         prizeWon: selectedPrizeText,
         promoCode: generatedPromoCode,
@@ -211,7 +259,7 @@ export async function POST(req: NextRequest) {
         await triggerTelegramNotification(
           selectedPrizeText,
           `${firstName} ${lastName}`,
-          fullPhone,
+          resolvedFullPhone,
           campaign.name,
           generatedPromoCode
         );
