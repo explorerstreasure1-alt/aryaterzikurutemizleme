@@ -6,11 +6,25 @@ import { NextRequest, NextResponse } from "next/server";
  * Accepts multipart/form-data with field name "file".
  * Returns the public URL of the uploaded image.
  *
+ * DELETE /api/upload
+ * Deletes an image from Vercel Blob storage.
+ * Accepts JSON body with { url: string }.
+ *
  * Vercel Deploy Güvenliği:
  * - BLOB_READ_WRITE_TOKEN yoksa otomatik olarak fallback (placeholder) kullanır
  * - Production'da BLOB_READ_WRITE_TOKEN .env'e eklenmelidir
  * - Dinamik import sayesinde @vercel/blob sadece token varsa yüklenir
  */
+
+/** Dynamically import @vercel/blob functions */
+async function getBlobModule() {
+  try {
+    return await import("@vercel/blob");
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -51,16 +65,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Dynamically import @vercel/blob (only when token exists)
-    // Bu sayede token olmadan deploy edildiğinde import hatası alınmaz
-    let put: Function;
-    try {
-      const blobModule = await import("@vercel/blob");
-      put = blobModule.put;
-    } catch (importError) {
-      console.error("[ARYA BLOB] @vercel/blob modülü yüklenemedi:", importError);
+    const blobModule = await getBlobModule();
+    if (!blobModule) {
       return NextResponse.json(
-        { error: "Blob depolama modülü yüklenemedi. Lütfen @vercel/blob paketinin kurulu olduğundan emin olun." },
+        { error: "Blob depolama modülü yüklenemedi." },
         { status: 500 }
       );
     }
@@ -71,7 +79,7 @@ export async function POST(req: NextRequest) {
     const filename = `campaigns/${timestamp}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
 
     // Upload to Vercel Blob
-    const blob = await put(filename, file, {
+    const blob = await blobModule.put(filename, file, {
       access: "public",
       addRandomSuffix: false,
     });
@@ -82,12 +90,43 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("[ARYA BLOB] Upload error:", error);
-    // Vercel'de beklenmeyen hata: placeholder ile yanıt ver, çökme
     return NextResponse.json(
       { 
         error: error.message || "Dosya yüklenirken hata oluştu.",
         fallback: "https://images.unsplash.com/photo-1545127398-14699f92334b?auto=format&fit=crop&w=1200&q=80"
       },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/upload
+ * Deletes an image from Vercel Blob storage by URL.
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const { url } = await req.json();
+    if (!url) {
+      return NextResponse.json({ error: "Silinecek görsel URL'si gerekli." }, { status: 400 });
+    }
+
+    const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+    if (!blobToken) {
+      return NextResponse.json({ error: "Blob depolama yapılandırılmamış." }, { status: 400 });
+    }
+
+    const blobModule = await getBlobModule();
+    if (!blobModule || !blobModule.del) {
+      return NextResponse.json({ error: "Blob silme modülü yüklenemedi." }, { status: 500 });
+    }
+
+    await blobModule.del(url);
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("[ARYA BLOB] Delete error:", error);
+    return NextResponse.json(
+      { error: error.message || "Görsel silinirken hata oluştu." },
       { status: 500 }
     );
   }

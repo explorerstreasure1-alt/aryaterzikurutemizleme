@@ -651,6 +651,9 @@ export default function UserHomePage() {
                       src={imagesList[currentImgIdx]} 
                       alt={campaign.name}
                       className="w-full h-full object-cover transition-all duration-700 group-hover:scale-105"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1545127398-14699f92334b?auto=format&fit=crop&w=1200&q=80";
+                      }}
                     />
 
                     {/* Gradient Overlay for modern legibility */}
