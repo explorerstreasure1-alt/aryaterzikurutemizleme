@@ -296,8 +296,8 @@ export default function AdminControlCenter() {
         body: JSON.stringify({
           name,
           description,
-          startDate,
-          endDate,
+          startDate: new Date(startDate).toISOString(),
+          endDate: new Date(endDate).toISOString(),
           badge,
           quota,
           images: selectedImages,
@@ -375,8 +375,8 @@ export default function AdminControlCenter() {
         body: JSON.stringify({
           name,
           description,
-          startDate,
-          endDate,
+          startDate: new Date(startDate).toISOString(),
+          endDate: new Date(endDate).toISOString(),
           badge,
           quota,
           images: selectedImages,
