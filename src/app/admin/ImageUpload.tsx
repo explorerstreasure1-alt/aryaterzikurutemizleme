@@ -229,7 +229,7 @@ export default function ImageUpload({
           value={customUrl}
           onChange={(e) => setCustomUrl(e.target.value)}
           placeholder="Görsel linki yapıştırın..."
-          className="input-field flex-1 px-4 py-2.5"
+          className="input-field flex-1 px-4 py-2.5 border border-teal-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs font-semibold"
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();

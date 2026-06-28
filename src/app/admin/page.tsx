@@ -787,7 +787,7 @@ export default function AdminControlCenter() {
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           placeholder="Örn. Arya Süper Kış Sezonu Kampanyası"
-                          className="input-field w-full px-4 py-2.5"
+                          className="input-field w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-bold"
                         />
                       </div>
                       <div>
@@ -795,7 +795,7 @@ export default function AdminControlCenter() {
                         <select 
                           value={badge}
                           onChange={(e) => setBadge(e.target.value)}
-                          className="input-field w-full px-4 py-2.5"
+                          className="input-field w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-bold"
                         >
                           <option value="Flaş">Flaş</option>
                           <option value="Haftalık">Haftalık</option>
@@ -814,7 +814,7 @@ export default function AdminControlCenter() {
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="Müşteriyi çekecek, dev indirimi ve detayları anlatan reklam metni..."
-                        className="input-field w-full px-4 py-2.5"
+                        className="input-field w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-bold"
                       ></textarea>
                     </div>
 
@@ -826,7 +826,7 @@ export default function AdminControlCenter() {
                           required
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
-                          className="input-field w-full px-4 py-2.5"
+                          className="input-field w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-bold"
                         />
                       </div>
                       <div>
@@ -836,7 +836,7 @@ export default function AdminControlCenter() {
                           required
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
-                          className="input-field w-full px-4 py-2.5"
+                          className="input-field w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-bold"
                         />
                       </div>
                       <div>
@@ -847,7 +847,7 @@ export default function AdminControlCenter() {
                           value={quota}
                           onChange={(e) => setQuota(parseInt(e.target.value) || 100)}
                           placeholder="Örn. 500"
-                          className="input-field w-full px-4 py-2.5"
+                          className="input-field w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-bold"
                         />
                       </div>
                     </div>
@@ -894,7 +894,7 @@ export default function AdminControlCenter() {
                                   setPrizes(updated);
                                 }}
                                 placeholder="Ödül Başlığı (örn. %10 İndirim)"
-                                className="input-field px-2 py-1.5 inline-block w-40"
+                                className="input-field px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-black inline-block w-40"
                               />
                             </div>
                             <div>
@@ -910,7 +910,7 @@ export default function AdminControlCenter() {
                                   updated[idx].probability = parseFloat(e.target.value) || 0;
                                   setPrizes(updated);
                                 }}
-                                className="input-field px-2 py-1.5 w-16"
+                                className="input-field px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-black w-16"
                               />
                             </div>
                             <div>
@@ -925,7 +925,7 @@ export default function AdminControlCenter() {
                                   setPrizes(updated);
                                 }}
                                 placeholder="KOD"
-                                className="input-field px-2 py-1.5 w-20"
+                                className="input-field px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-bold w-20"
                               />
                             </div>
                           </div>
@@ -1092,7 +1092,7 @@ export default function AdminControlCenter() {
                   placeholder="İsim, soyisim veya telefon son 4 hanesine göre listeyi filtreleyin..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="input-field w-full px-4 py-2.5"
+                  className="input-field w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-bold"
                 />
               </div>
 
@@ -1205,7 +1205,7 @@ export default function AdminControlCenter() {
                   placeholder="İsim, soyisim, ödül veya kupon koduna göre listeyi filtreleyin..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="input-field w-full px-4 py-2.5"
+                  className="input-field w-full px-4 py-2.5 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-teal-600 text-sm font-bold"
                 />
               </div>
 
