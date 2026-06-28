@@ -98,6 +98,7 @@ export default function UserHomePage() {
   const [spinError, setSpinError] = useState<string | null>(null);
   const [rotationDegrees, setRotationDegrees] = useState(0);
   const [spinState, setSpinState] = useState<"idle" | "drawn" | "claimed">("idle");
+  const [claimingPrize, setClaimingPrize] = useState(false);
   const [shareBonusCode, setShareBonusCode] = useState<string | null>(null);
 
   const fetchCampaigns = async () => {
@@ -332,8 +333,9 @@ export default function UserHomePage() {
     setSpinPromoCode(null);
     setSpinError(null);
     setSpinState("idle");
+    setClaimingPrize(false);
     setShareBonusCode(null);
-    setRotationDegrees(0); // Reset wheel rotation position
+    setRotationDegrees(0);
     setFirstName("");
     setLastName("");
     setFullPhone("");
@@ -427,14 +429,23 @@ export default function UserHomePage() {
   // Submit prize claim form
   const handleClaimSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeWheelCampaign || !selectedPrize || !spinPromoCode) return;
+    if (!activeWheelCampaign || !selectedPrize || !spinPromoCode || claimingPrize) return;
     setSpinError(null);
 
-    if (!firstName.trim() || !lastName.trim() || !fullPhone.trim() || !phoneLastFour.trim()) {
-      setSpinError("Lütfen ödülünüzü kaydetmek için tüm alanları doldurun.");
+    if (!firstName.trim() || !lastName.trim()) {
+      setSpinError("Lütfen isim ve soyisminizi giriniz.");
+      return;
+    }
+    if (fullPhone.replace(/\D/g, "").length < 10) {
+      setSpinError("Lütfen geçerli bir telefon numarası giriniz (en az 10 hane).");
+      return;
+    }
+    if (phoneLastFour.replace(/\D/g, "").length !== 4) {
+      setSpinError("Telefon numaranızın son 4 hanesi doğrulamak için zorunludur.");
       return;
     }
 
+    setClaimingPrize(true);
     try {
       const res = await fetch("/api/spin", {
         method: "POST",
@@ -461,6 +472,8 @@ export default function UserHomePage() {
       }
     } catch (err) {
       setSpinError("Ödülünüz kaydedilirken ağ hatası oluştu.");
+    } finally {
+      setClaimingPrize(false);
     }
   };
 
@@ -487,6 +500,7 @@ export default function UserHomePage() {
     return () => body.classList.remove("scroll-locked");
   }, [anyModalOpen]);
 
+  // Escape tuşu ile modal kapatma
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -741,7 +755,9 @@ export default function UserHomePage() {
                       </p>
                       
                       {timer ? (
-                        timer.totalSeconds < 0 ? (
+                        timer.status === "Hatalı Tarih" ? (
+                          <span className="text-[10px] md:text-xs font-bold text-rose-400">HATALI TARİH</span>
+                        ) : timer.totalSeconds < 0 ? (
                           <span className="text-[10px] md:text-xs font-bold text-slate-300">{timer.status || "BAŞLAMADI"}</span>
                         ) : timer.totalSeconds === 0 ? (
                           <span className="text-xs md:text-sm font-black text-rose-500 uppercase">{timer.status || "SÜRE DOLDU!"}</span>
@@ -905,6 +921,7 @@ export default function UserHomePage() {
                     <Clock className="w-3 h-3" />
                     {(() => {
                       const t = timeRemaining[activeJoinCampaign.id];
+                      if (t.status === "Hatalı Tarih") return <span className="text-rose-500">Hatalı Tarih</span>;
                       if (t.totalSeconds < 0) return <span className="text-rose-500">Başlamadı</span>;
                       if (t.totalSeconds === 0) return <span className="text-rose-500">Süre Doldu</span>;
                       return <span className="text-teal-600">{formatTimerDisplay(t)}</span>;
@@ -922,7 +939,27 @@ export default function UserHomePage() {
 
               {(() => {
                 const joinTimer = timeRemaining[activeJoinCampaign.id];
-                const joinExpired = !actionSuccess && joinTimer && joinTimer.totalSeconds <= 0;
+                const joinBadDate = joinTimer && joinTimer.status === "Hatalı Tarih";
+                const joinExpired = !actionSuccess && !joinBadDate && joinTimer && joinTimer.totalSeconds <= 0;
+
+                // Invalid date warning
+                if (joinBadDate) {
+                  return (
+                    <div className="p-6 text-center space-y-3">
+                      <div className="w-14 h-14 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto border border-rose-500/20">
+                        <AlertTriangle className="w-7 h-7" />
+                      </div>
+                      <h4 className="text-lg font-black text-rose-600">KAMPANYA TARİHİ HATALI</h4>
+                      <p className="text-xs opacity-75">Bu kampanyanın başlangıç/bitiş tarihleri geçersizdir. Lütfen yöneticinizle iletişime geçin.</p>
+                      <button
+                        onClick={() => setActiveJoinCampaign(null)}
+                        className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase rounded-xl transition-all btn-base"
+                      >
+                        Kapat
+                      </button>
+                    </div>
+                  );
+                }
 
                 // Expired / not started warning
                 if (joinExpired) {
@@ -1102,6 +1139,7 @@ export default function UserHomePage() {
                     <Clock className="w-3 h-3" />
                     {(() => {
                       const t = timeRemaining[activeWheelCampaign.id];
+                      if (t.status === "Hatalı Tarih") return <span className="text-rose-500">Hatalı Tarih</span>;
                       if (t.totalSeconds < 0) return <span className="text-rose-500">Başlamadı</span>;
                       if (t.totalSeconds === 0) return <span className="text-rose-500">Süre Doldu</span>;
                       return <span className="text-teal-600">{formatTimerDisplay(t)}</span>;
@@ -1119,7 +1157,26 @@ export default function UserHomePage() {
 
               {(() => {
                 const wheelTimer = timeRemaining[activeWheelCampaign.id];
-                const wheelExpired = wheelTimer && wheelTimer.totalSeconds <= 0;
+                const wheelBadDate = wheelTimer && wheelTimer.status === "Hatalı Tarih";
+                const wheelExpired = wheelTimer && !wheelBadDate && wheelTimer.totalSeconds <= 0;
+
+                if (wheelBadDate) {
+                  return (
+                    <div className="p-6 text-center space-y-3 w-full">
+                      <div className="w-14 h-14 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto border border-rose-500/20">
+                        <AlertTriangle className="w-7 h-7" />
+                      </div>
+                      <h4 className="text-lg font-black text-rose-600">KAMPANYA TARİHİ HATALI</h4>
+                      <p className="text-xs opacity-75">Bu kampanyanın başlangıç/bitiş tarihleri geçersizdir.</p>
+                      <button
+                        onClick={() => setActiveWheelCampaign(null)}
+                        className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase rounded-xl transition-all btn-base"
+                      >
+                        Kapat
+                      </button>
+                    </div>
+                  );
+                }
 
                 if (wheelExpired) {
                   return (
@@ -1316,9 +1373,19 @@ export default function UserHomePage() {
 
                     <button
                       type="submit"
-                      className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-xl hover:scale-[1.01] btn-base"
+                      disabled={claimingPrize}
+                      className={`w-full py-4 font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-xl btn-base ${
+                        claimingPrize
+                          ? "bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed"
+                          : "bg-teal-600 hover:bg-teal-700 text-white hover:scale-[1.01]"
+                      }`}
                     >
-                      Ödülümü Adıma Kaydet!
+                      {claimingPrize ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          KAYDEDİLİYOR...
+                        </span>
+                      ) : "Ödülümü Adıma Kaydet!"}
                     </button>
                   </form>
                 </div>

@@ -747,6 +747,13 @@ export default function AdminControlCenter() {
                   onClick={() => {
                     setIsCreating(true);
                     setEditingCampaign(null);
+                    setName("");
+                    setDescription("");
+                    setStartDate("");
+                    setEndDate("");
+                    setBadge("Flaş");
+                    setQuota(300);
+                    setCampaignError(null);
                     setSelectedImages([]);
                     setPrizes(JSON.parse(JSON.stringify(DEFAULT_PRIZES)));
                   }}
