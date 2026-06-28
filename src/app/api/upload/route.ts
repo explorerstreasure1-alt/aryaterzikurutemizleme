@@ -5,31 +5,14 @@ import { NextRequest, NextResponse } from "next/server";
  * Uploads an image to Vercel Blob storage.
  * Accepts multipart/form-data with field name "file".
  * Returns the public URL of the uploaded image.
+ *
+ * Vercel Deploy Güvenliği:
+ * - BLOB_READ_WRITE_TOKEN yoksa otomatik olarak fallback (placeholder) kullanır
+ * - Production'da BLOB_READ_WRITE_TOKEN .env'e eklenmelidir
+ * - Dinamik import sayesinde @vercel/blob sadece token varsa yüklenir
  */
 export async function POST(req: NextRequest) {
   try {
-    // Check if BLOB_READ_WRITE_TOKEN is configured
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      // Fallback: return a mock response for development without Blob
-      const formData = await req.formData();
-      const file = formData.get("file") as File | null;
-
-      if (!file) {
-        return NextResponse.json({ error: "Dosya bulunamadı." }, { status: 400 });
-      }
-
-      // In dev without blob, return a placeholder URL
-      // In production, BLOB_READ_WRITE_TOKEN must be set
-      console.log("[DEV] Blob token not configured. Using placeholder for:", file.name);
-      return NextResponse.json({
-        url: `https://images.unsplash.com/photo-1545127398-14699f92334b?auto=format&fit=crop&w=1200&q=80`,
-        devMode: true,
-      });
-    }
-
-    // Dynamically import @vercel/blob (only when token is present)
-    const { put } = await import("@vercel/blob");
-
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
@@ -55,6 +38,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check if BLOB_READ_WRITE_TOKEN is configured
+    const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+
+    if (!blobToken) {
+      // Fallback: Vercel'e deploy edildiğinde token yoksa çökmez, placeholder döndürür
+      console.log(`[ARYA BLOB] Token bulunamadı. Placeholder kullanılıyor: ${file.name}`);
+      return NextResponse.json({
+        url: `https://images.unsplash.com/photo-1545127398-14699f92334b?auto=format&fit=crop&w=1200&q=80`,
+        devMode: true,
+        message: "Blob depolama yapılandırılmamış. Placeholder görsel kullanıldı. Vercel proje ayarlarına BLOB_READ_WRITE_TOKEN ekleyin.",
+      });
+    }
+
+    // Dynamically import @vercel/blob (only when token exists)
+    // Bu sayede token olmadan deploy edildiğinde import hatası alınmaz
+    let put: Function;
+    try {
+      const blobModule = await import("@vercel/blob");
+      put = blobModule.put;
+    } catch (importError) {
+      console.error("[ARYA BLOB] @vercel/blob modülü yüklenemedi:", importError);
+      return NextResponse.json(
+        { error: "Blob depolama modülü yüklenemedi. Lütfen @vercel/blob paketinin kurulu olduğundan emin olun." },
+        { status: 500 }
+      );
+    }
+
     // Generate unique filename
     const timestamp = Date.now();
     const ext = file.name.split(".").pop() || "jpg";
@@ -71,9 +81,13 @@ export async function POST(req: NextRequest) {
       devMode: false,
     });
   } catch (error: any) {
-    console.error("Upload error:", error);
+    console.error("[ARYA BLOB] Upload error:", error);
+    // Vercel'de beklenmeyen hata: placeholder ile yanıt ver, çökme
     return NextResponse.json(
-      { error: error.message || "Dosya yüklenirken hata oluştu." },
+      { 
+        error: error.message || "Dosya yüklenirken hata oluştu.",
+        fallback: "https://images.unsplash.com/photo-1545127398-14699f92334b?auto=format&fit=crop&w=1200&q=80"
+      },
       { status: 500 }
     );
   }
