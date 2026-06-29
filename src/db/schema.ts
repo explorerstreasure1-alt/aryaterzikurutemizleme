@@ -31,6 +31,14 @@ export const participations = pgTable("participations", {
   createdAt: timestamp("created_at", tz).notNull().defaultNow(),
 });
 
+export const musicTracks = pgTable("music_tracks", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", tz).notNull().defaultNow(),
+});
+
 export const spinners = pgTable("spinners", {
   id: serial("id").primaryKey(),
   campaignId: integer("campaign_id").notNull(),
