@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { spinners, campaigns, participations } from "@/db/schema";
-import { eq, and, or, sql, gt } from "drizzle-orm";
+import { spinners, campaigns } from "@/db/schema";
+import { eq, and, or, sql, gt, gte } from "drizzle-orm";
 import { headers } from "next/headers";
 
 // Helper to send Telegram Notification if token is set
@@ -101,6 +101,10 @@ export async function POST(req: NextRequest) {
                       headersList.get("x-real-ip")?.trim() || 
                       "127.0.0.1";
 
+    // Today's start boundary for once-per-day checks
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
     // 1. ACTION: "draw" -> Pre-determine the prize server-side to prevent cheating
     if (action === "draw") {
       // Rate limiting: max 5 spin tries per IP per minute
@@ -121,12 +125,12 @@ export async function POST(req: NextRequest) {
         }, { status: 429 });
       }
 
-      // Anti-cheat check BEFORE draw: already spun this campaign?
-      const existingSpin = await db.select()
+      // Once-per-day check: already spun any campaign today?
+      const existingSpinToday = await db.select()
         .from(spinners)
         .where(
           and(
-            eq(spinners.campaignId, parsedCampaignId),
+            gte(spinners.createdAt, todayStart),
             or(
               eq(spinners.ipAddress, ipAddress),
               eq(spinners.cookieId, cookieId || "never_matches")
@@ -134,31 +138,10 @@ export async function POST(req: NextRequest) {
           )
         );
 
-      if (existingSpin.length > 0) {
+      if (existingSpinToday.length > 0) {
         return NextResponse.json({ 
-          error: "Zaten Çarkı Çevirdiniz!", 
-          message: "Bu kampanya için çark çevirme hakkınızı zaten kullandınız. Yeni kampanyalarımızı takip etmeye devam edin!" 
-        }, { status: 400 });
-      }
-
-      // Participation check: user must have joined the campaign first
-      const hasJoined = await db.select()
-        .from(participations)
-        .where(
-          and(
-            eq(participations.campaignId, parsedCampaignId),
-            or(
-              eq(participations.ipAddress, ipAddress),
-              eq(participations.cookieId, cookieId || "never_matches"),
-              eq(participations.phoneLastFour, body.phoneLastFour || "never_matches")
-            )
-          )
-        );
-
-      if (hasJoined.length === 0) {
-        return NextResponse.json({ 
-          error: "Önce Kampanyaya Katılın!", 
-          message: "Çarkı çevirmeden önce lütfen 'Kampanyaya Katıl' butonuna tıklayarak kaydolun." 
+          error: "Günde 1 Defa!", 
+          message: "Çark çevirme hakkınızı bugün zaten kullandınız. Yarına kadar bekleyin!" 
         }, { status: 400 });
       }
 
@@ -215,12 +198,12 @@ export async function POST(req: NextRequest) {
       // If fullPhone is not provided (simplified claim), use phoneLastFour as placeholder
       const resolvedFullPhone = fullPhone || `*******${phoneLastFour}`;
 
-      // Final double check on anti-cheat
-      const existing = await db.select()
+      // Final double check: already claimed a prize today?
+      const existingClaimToday = await db.select()
         .from(spinners)
         .where(
           and(
-            eq(spinners.campaignId, parsedCampaignId),
+            gte(spinners.createdAt, todayStart),
             or(
               eq(spinners.ipAddress, ipAddress),
               eq(spinners.cookieId, cookieId || "never_matches"),
@@ -229,10 +212,10 @@ export async function POST(req: NextRequest) {
           )
         );
 
-      if (existing.length > 0) {
+      if (existingClaimToday.length > 0) {
         return NextResponse.json({ 
-          error: "Zaten Çark Ödülünüz Kayıtlı!", 
-          message: "Aynı telefon numarası, çerez veya IP ile daha önce ödül kaydı yapılmış." 
+          error: "Günde 1 Defa!", 
+          message: "Bugün zaten bir ödül kazanmışsınız. Yarına kadar bekleyin!" 
         }, { status: 400 });
       }
 
