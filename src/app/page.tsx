@@ -22,6 +22,8 @@ import {
   ChevronRight, 
   Flame, 
   Lock,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 
 interface Campaign {
@@ -64,6 +66,84 @@ export default function UserHomePage() {
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [visitorId, setVisitorId] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Background music state
+  const [musicTracks, setMusicTracks] = useState<{ id: number; name: string; url: string }[]>([]);
+  const [musicMuted, setMusicMuted] = useState(false);
+  const [currentTrackIdx, setCurrentTrackIdx] = useState(-1);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const musicIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Fetch music tracks from admin
+  useEffect(() => {
+    const fetchMusic = async () => {
+      try {
+        const res = await fetch("/api/admin/music");
+        if (res.ok) {
+          const data = await res.json();
+          const activeTracks = data.filter((t: any) => t.active);
+          setMusicTracks(activeTracks);
+          if (activeTracks.length > 0 && currentTrackIdx === -1) {
+            setCurrentTrackIdx(0);
+          }
+        }
+      } catch (e) { /* silent */ }
+    };
+    fetchMusic();
+  }, []);
+
+  // Music cycling every 15 seconds
+  useEffect(() => {
+    if (musicTracks.length === 0) return;
+    if (musicMuted) return;
+
+    const playNext = () => {
+      setCurrentTrackIdx((prev) => {
+        const next = (prev + 1) % musicTracks.length;
+        return next;
+      });
+    };
+
+    // Start cycle
+    musicIntervalRef.current = setInterval(playNext, 15000);
+    return () => {
+      if (musicIntervalRef.current) clearInterval(musicIntervalRef.current);
+    };
+  }, [musicTracks, musicMuted]);
+
+  // Play audio when track changes
+  useEffect(() => {
+    if (currentTrackIdx < 0 || musicTracks.length === 0) return;
+    const track = musicTracks[currentTrackIdx];
+    if (!track) return;
+    
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    audio.src = track.url;
+    audio.volume = 0.3;
+    audio.play().catch(() => {});
+  }, [currentTrackIdx, musicTracks]);
+
+  const toggleMusic = () => {
+    setMusicMuted((prev) => {
+      const next = !prev;
+      if (next) {
+        // Mute → pause
+        audioRef.current?.pause();
+        if (musicIntervalRef.current) clearInterval(musicIntervalRef.current);
+      } else {
+        // Unmute → start playing from where we left off
+        if (musicTracks.length > 0) {
+          audioRef.current?.play().catch(() => {});
+          musicIntervalRef.current = setInterval(() => {
+            setCurrentTrackIdx((prev) => (prev + 1) % musicTracks.length);
+          }, 15000);
+        }
+      }
+      return next;
+    });
+  };
 
   // Carousel slider indexes
   const [carouselIndexes, setCarouselIndexes] = useState<Record<number, number>>({});
@@ -584,6 +664,17 @@ export default function UserHomePage() {
               <Lock className="w-2.5 h-2.5 md:w-3 md:h-3" /> <span className="hidden xs:inline">Admin</span>
             </a>
             
+            {/* MUSIC TOGGLE BUTTON */}
+            {musicTracks.length > 0 && (
+              <button
+                onClick={toggleMusic}
+                className={`p-2 md:p-2.5 rounded-xl border transition-all btn-base ${musicMuted ? "bg-rose-50/50 border-rose-200 text-rose-500 hover:bg-rose-100/50" : "bg-teal-50/50 border-teal-100 text-teal-600 hover:bg-teal-100/50"}`}
+                title={musicMuted ? "Sesi Aç" : "Sesi Kapat"}
+              >
+                {musicMuted ? <VolumeX className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <Volume2 className="w-3.5 h-3.5 md:w-4 md:h-4" />}
+              </button>
+            )}
+
             <button 
               onClick={toggleTheme}
               className={`p-2 md:p-2.5 rounded-xl border transition-all btn-base ${darkMode ? "bg-slate-800 border-slate-700 hover:bg-slate-700 text-amber-400" : "bg-teal-50/50 border-teal-100 hover:bg-teal-100/50 text-teal-600"}`}
@@ -1595,6 +1686,9 @@ export default function UserHomePage() {
           </div>
         </div>
       )}
+
+      {/* Hidden audio element for background music */}
+      <audio ref={audioRef} preload="none" />
 
     </>
   );
