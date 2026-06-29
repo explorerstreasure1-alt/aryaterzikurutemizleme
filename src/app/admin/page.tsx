@@ -23,7 +23,8 @@ import {
   ArrowLeft,
   Settings,
   HelpCircle,
-  AlertCircle
+  AlertCircle,
+  Music
 } from "lucide-react";
 import { getWhatsAppUrl, ARYA_WHATSAPP_PHONE } from "../utils";
 import ImageUpload from "./ImageUpload";
@@ -103,7 +104,7 @@ export default function AdminControlCenter() {
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Tab management
-  const [activeTab, setActiveTab] = useState<"dashboard" | "campaigns" | "participations" | "winners">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "campaigns" | "participations" | "winners" | "music">("dashboard");
 
   // Data logs state
   const [campaignsList, setCampaignsList] = useState<Campaign[]>([]);
@@ -139,6 +140,64 @@ export default function AdminControlCenter() {
   // Filter lists inside dashboard tables
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Music management state
+  const [musicList, setMusicList] = useState<{ id: number; name: string; url: string; active: boolean; createdAt: string }[]>([]);
+  const [musicName, setMusicName] = useState("");
+  const [musicUrl, setMusicUrl] = useState("");
+  const [addingMusic, setAddingMusic] = useState(false);
+  const [musicError, setMusicError] = useState<string | null>(null);
+
+  const fetchMusic = async () => {
+    try {
+      const res = await fetch("/api/admin/music");
+      if (res.ok) {
+        const data = await res.json();
+        setMusicList(data);
+      }
+    } catch (err) {
+      console.error("Müzik listesi yüklenemedi:", err);
+    }
+  };
+
+  const handleAddMusic = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMusicError(null);
+    if (!musicName.trim() || !musicUrl.trim()) {
+      setMusicError("Müzik adı ve URL gereklidir.");
+      return;
+    }
+    setAddingMusic(true);
+    try {
+      const res = await fetch("/api/admin/music", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: musicName.trim(), url: musicUrl.trim() })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setMusicError(data.error || "Müzik eklenemedi.");
+      } else {
+        setMusicName("");
+        setMusicUrl("");
+        fetchMusic();
+      }
+    } catch (err) {
+      setMusicError("Bağlantı hatası.");
+    } finally {
+      setAddingMusic(false);
+    }
+  };
+
+  const handleDeleteMusic = async (id: number) => {
+    if (!confirm("Bu müziği silmek istediğinize emin misiniz?")) return;
+    try {
+      const res = await fetch(`/api/admin/music/${id}`, { method: "DELETE" });
+      if (res.ok) fetchMusic();
+    } catch (err) {
+      console.error("Müzik silinemedi:", err);
+    }
+  };
+
   // Loading state
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -148,6 +207,7 @@ export default function AdminControlCenter() {
     if (savedAuth) {
       setIsAuthenticated(true);
       fetchDashboardData();
+      fetchMusic();
     }
   }, []);
 
@@ -158,6 +218,7 @@ export default function AdminControlCenter() {
       localStorage.setItem("arya_admin_authenticated", "true");
       setAuthError(null);
       fetchDashboardData();
+      fetchMusic();
     } else {
       setAuthError("Geçersiz şifre girdiniz. Lütfen tekrar deneyin.");
     }
@@ -586,6 +647,13 @@ export default function AdminControlCenter() {
               className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 btn-base ${activeTab === "winners" ? "bg-teal-600 text-white shadow-md shadow-teal-600/10" : "text-slate-600 hover:bg-teal-50"}`}
             >
               <Gift className="w-4 h-4" /> Çark Kazananları
+            </button>
+
+            <button
+              onClick={() => { setActiveTab("music"); setIsCreating(false); }}
+              className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 btn-base ${activeTab === "music" ? "bg-teal-600 text-white shadow-md shadow-teal-600/10" : "text-slate-600 hover:bg-teal-50"}`}
+            >
+              <Music className="w-4 h-4" /> Müzik Yönetimi
             </button>
           </div>
 
@@ -1301,6 +1369,121 @@ export default function AdminControlCenter() {
                       {winnersList.length === 0 && (
                         <tr>
                           <td colSpan={7} className="p-8 text-center text-slate-400">Henüz çark kazananı bulunmuyor.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+
+          {/* VIEW 5: MUSIC MANAGEMENT */}
+          {activeTab === "music" && (
+            <div className="space-y-6">
+
+              <div>
+                <h3 className="text-xl font-black text-slate-800">Müzik Yönetimi</h3>
+                <p className="text-xs opacity-75">Ana sayfada 15 saniyede bir dönecek arka plan müziklerini ekleyin.</p>
+              </div>
+
+              {/* ADD MUSIC FORM */}
+              <div className="bg-white rounded-2xl border border-teal-50 shadow-sm p-6 space-y-4">
+                <h4 className="text-sm font-black text-teal-600 uppercase tracking-wider">Yeni Müzik Ekle</h4>
+                {musicError && (
+                  <div className="p-3 bg-rose-500/10 text-rose-600 rounded-xl text-xs font-bold flex items-center gap-2 border border-rose-500/20">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{musicError}</span>
+                  </div>
+                )}
+                <form onSubmit={handleAddMusic} className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-wider mb-1 opacity-80">Müzik Adı</label>
+                    <input
+                      type="text"
+                      required
+                      value={musicName}
+                      onChange={(e) => setMusicName(e.target.value)}
+                      placeholder="Örn: Yaz Melodileri"
+                      className="w-full px-4 py-2.5 rounded-xl border border-teal-500/10 bg-slate-50 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-wider mb-1 opacity-80">Müzik URL (mp3, wav, ogg)</label>
+                    <input
+                      type="url"
+                      required
+                      value={musicUrl}
+                      onChange={(e) => setMusicUrl(e.target.value)}
+                      placeholder="https://example.com/muzik.mp3"
+                      className="w-full px-4 py-2.5 rounded-xl border border-teal-500/10 bg-slate-50 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
+                    />
+                    <p className="text-[10px] opacity-60 mt-1">Vercel Blob veya herkese açık müzik dosyası URL&rsquo;si girin.</p>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={addingMusic}
+                    className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow btn-base ${
+                      addingMusic
+                        ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                        : "bg-teal-600 hover:bg-teal-700 text-white"
+                    }`}
+                  >
+                    {addingMusic ? "Ekleniyor..." : "Müzik Ekle"}
+                  </button>
+                </form>
+              </div>
+
+              {/* MUSIC LIST */}
+              <div className="bg-white rounded-3xl border border-teal-50 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-500 font-extrabold border-b">
+                        <th className="p-4">ID</th>
+                        <th className="p-4">Müzik Adı</th>
+                        <th className="p-4">URL</th>
+                        <th className="p-4">Durum</th>
+                        <th className="p-4">Eklenme Tarihi</th>
+                        <th className="p-4 text-right">İşlem</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                      {musicList.map((track) => (
+                        <tr key={track.id} className="hover:bg-slate-50/50">
+                          <td className="p-4 text-slate-400">{track.id}</td>
+                          <td className="p-4 font-black text-slate-900">{track.name}</td>
+                          <td className="p-4 max-w-[200px] truncate text-teal-600">
+                            <a href={track.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                              {track.url}
+                            </a>
+                          </td>
+                          <td className="p-4">
+                            <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold inline-block ${
+                              track.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"
+                            }`}>
+                              {track.active ? "Aktif" : "Pasif"}
+                            </span>
+                          </td>
+                          <td className="p-4 text-slate-400 text-[10px]">
+                            {new Date(track.createdAt).toLocaleString("tr-TR")}
+                          </td>
+                          <td className="p-4 text-right">
+                            <button
+                              onClick={() => handleDeleteMusic(track.id)}
+                              className="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 transition-all btn-base"
+                              title="Sil"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {musicList.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-slate-400">Henüz müzik eklenmemiş.</td>
                         </tr>
                       )}
                     </tbody>
