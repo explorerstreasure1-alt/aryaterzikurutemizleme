@@ -161,6 +161,7 @@ export default function UserHomePage() {
   // Refs to clean up spin animation resources on unmount
   const spinTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const spinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wheelRef = useRef<HTMLDivElement | null>(null);
 
   // State for form registrations
   const [firstName, setFirstName] = useState("");
@@ -418,6 +419,11 @@ export default function UserHomePage() {
     setLastName("");
     setFullPhone("");
     setPhoneLastFour("");
+    // Reset DOM wheel position
+    if (wheelRef.current) {
+      wheelRef.current.style.transition = "none";
+      wheelRef.current.style.transform = "rotate(0deg)";
+    }
   };
 
   // Trigger spin on server & animate on client
@@ -497,11 +503,20 @@ export default function UserHomePage() {
       }, tickIntervalMs);
       spinTickRef.current = tickInterval;
 
-      setRotationDegrees(finalRotation);
+      // Apply rotation + transition DIRECTLY on DOM element via ref
+      // This bypasses React's inline-style reconciliation which can reset CSS transitions on re-render
+      if (wheelRef.current) {
+        wheelRef.current.style.transition = `transform ${spinDuration}s cubic-bezier(0.08, 0.75, 0.35, 1)`;
+        wheelRef.current.style.transform = `rotate(${finalRotation}deg)`;
+      }
 
       spinTimeoutRef.current = setTimeout(() => {
         spinTickRef.current = null;
         spinTimeoutRef.current = null;
+        // Clear inline transition so the wheel stays at final position without affecting future renders
+        if (wheelRef.current) {
+          wheelRef.current.style.transition = "none";
+        }
         setIsSpinning(false);
         setSelectedPrize(prize);
         setSpinState("drawn");
@@ -1301,10 +1316,8 @@ export default function UserHomePage() {
                     
                     {/* Rotating Wheel Container */}
                     <div 
-                      style={{ 
-                        transform: `rotate(${rotationDegrees}deg)`,
-                        transition: isSpinning ? `transform ${(() => { const p = activeWheelCampaign.prizes; try { return Math.max(4, Math.min(7, JSON.parse(p).length * 0.7)); } catch(e) { return 5; } })()}s cubic-bezier(0.08, 0.75, 0.35, 1)` : "none"
-                      }}
+                      ref={wheelRef}
+                      style={{ transform: `rotate(${rotationDegrees}deg)` }}
                       className="w-full h-full rounded-full shadow-[0_0_40px_rgba(0,0,0,0.35)] relative overflow-hidden"
                     >
                       {/* Outer chrome ring */}
