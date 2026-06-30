@@ -390,8 +390,8 @@ export default function UserHomePage() {
     }
 
     // Validations
-    if (firstName.trim().length !== 1 || lastName.trim().length !== 1) {
-      setActionError("Lütfen isminizin ve soyisminizin sadece ilk harfini giriniz.");
+    if (firstName.trim().length < 1 || lastName.trim().length !== 1) {
+      setActionError("Lütfen adınızı ve soyadınızın ilk harfini giriniz.");
       setJoining(false);
       return;
     }
@@ -561,8 +561,8 @@ export default function UserHomePage() {
     if (!activeWheelCampaign || !selectedPrize || !spinPromoCode || claimingPrize) return;
     setSpinError(null);
 
-    if (firstName.trim().length !== 1 || lastName.trim().length !== 1) {
-      setSpinError("Lütfen isminizin ve soyisminizin sadece ilk harfini giriniz.");
+    if (firstName.trim().length < 1 || lastName.trim().length !== 1) {
+      setSpinError("Lütfen adınızı ve soyadınızın ilk harfini giriniz.");
       return;
     }
     if (phoneLastFour.replace(/\D/g, "").length !== 4) {
@@ -1162,15 +1162,14 @@ export default function UserHomePage() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Adınızın Baş Harfi</label>
+                        <label className="block text-[11px] font-black uppercase tracking-wider mb-1.5 opacity-80">Adınız</label>
                         <input 
                           type="text" 
                           required
-                          maxLength={1}
                           value={firstName}
-                          onChange={(e) => setFirstName(e.target.value.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ]/g, "").toUpperCase())}
-                          placeholder="Örn. A"
-                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold text-center text-lg tracking-widest input-field"
+                          onChange={(e) => setFirstName(e.target.value.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ ]/g, "").toUpperCase())}
+                          placeholder="Örn. AHMET"
+                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
                         />
                       </div>
                       <div>
@@ -1549,15 +1548,14 @@ export default function UserHomePage() {
                   <form onSubmit={handleClaimSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] font-black uppercase mb-1">Adınızın Baş Harfi</label>
+                        <label className="block text-[10px] font-black uppercase mb-1">Adınız</label>
                         <input 
                           type="text" 
                           required
-                          maxLength={1}
                           value={firstName}
-                          onChange={(e) => setFirstName(e.target.value.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ]/g, "").toUpperCase())}
-                          placeholder="A"
-                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-500 input-field"
+                          onChange={(e) => setFirstName(e.target.value.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ ]/g, "").toUpperCase())}
+                          placeholder="AHMET"
+                          className="w-full px-4 py-3 rounded-xl border border-teal-500/10 bg-slate-50 dark:bg-slate-800 text-sm font-bold input-field"
                         />
                       </div>
                       <div>
