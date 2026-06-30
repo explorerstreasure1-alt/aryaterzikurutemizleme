@@ -26,7 +26,8 @@ import {
   AlertCircle,
   Music,
   Image,
-  Download
+  Download,
+  Volume2,
 } from "lucide-react";
 import { getWhatsAppUrl, ARYA_WHATSAPP_PHONE } from "../utils";
 import ImageUpload from "./ImageUpload";
@@ -151,6 +152,8 @@ export default function AdminControlCenter() {
   const [musicUrl, setMusicUrl] = useState("");
   const [addingMusic, setAddingMusic] = useState(false);
   const [musicError, setMusicError] = useState<string | null>(null);
+  const [musicVolume, setMusicVolume] = useState(0.3);
+  const [volumeSaving, setVolumeSaving] = useState(false);
 
   const fetchMusic = async () => {
     try {
@@ -161,6 +164,37 @@ export default function AdminControlCenter() {
       }
     } catch (err) {
       console.error("Müzik listesi yüklenemedi:", err);
+    }
+  };
+
+  const fetchMusicVolume = async () => {
+    try {
+      const res = await fetch("/api/admin/settings?key=musicVolume");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.value !== null) {
+          const v = parseFloat(data.value);
+          if (!isNaN(v) && v >= 0 && v <= 1) setMusicVolume(v);
+        }
+      }
+    } catch (err) {
+      console.error("Ses seviyesi yüklenemedi:", err);
+    }
+  };
+
+  const handleVolumeChange = async (newVolume: number) => {
+    setMusicVolume(newVolume);
+    setVolumeSaving(true);
+    try {
+      await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "musicVolume", value: String(newVolume) })
+      });
+    } catch (err) {
+      console.error("Ses seviyesi kaydedilemedi:", err);
+    } finally {
+      setVolumeSaving(false);
     }
   };
 
@@ -256,6 +290,7 @@ export default function AdminControlCenter() {
       setIsAuthenticated(true);
       fetchDashboardData();
       fetchMusic();
+      fetchMusicVolume();
     }
   }, []);
 
@@ -267,6 +302,7 @@ export default function AdminControlCenter() {
       setAuthError(null);
       fetchDashboardData();
       fetchMusic();
+      fetchMusicVolume();
     } else {
       setAuthError("Geçersiz şifre girdiniz. Lütfen tekrar deneyin.");
     }
@@ -1499,6 +1535,38 @@ export default function AdminControlCenter() {
                     {addingMusic ? "Ekleniyor..." : "Müzik Ekle"}
                   </button>
                 </form>
+              </div>
+
+              {/* VOLUME SLIDER */}
+              <div className="bg-white rounded-2xl border border-teal-50 shadow-sm p-6 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-black text-teal-600 uppercase tracking-wider flex items-center gap-2">
+                    <Volume2 className="w-4 h-4" /> Arka Plan Müzik Ses Seviyesi
+                  </h4>
+                  <span className="text-xs font-black text-teal-700 bg-teal-50 px-3 py-1 rounded-full">
+                    %{Math.round(musicVolume * 100)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-bold text-slate-400">0%</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={musicVolume}
+                    onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer accent-teal-600 volume-slider"
+                  />
+                  <span className="text-[10px] font-bold text-slate-400">%100</span>
+                </div>
+                <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                  {volumeSaving ? (
+                    <><RefreshCw className="w-3 h-3 animate-spin" /> Kaydediliyor...</>
+                  ) : (
+                    <><Check className="w-3 h-3 text-teal-500" /> Ses seviyesi otomatik kaydedilir.</>
+                  )}
+                </p>
               </div>
 
               {/* MUSIC LIST */}

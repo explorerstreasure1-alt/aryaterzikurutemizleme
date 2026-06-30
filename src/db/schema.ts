@@ -53,3 +53,8 @@ export const spinners = pgTable("spinners", {
   cookieId: text("cookie_id").notNull(),
   createdAt: timestamp("created_at", tz).notNull().defaultNow(),
 });
+
+export const settings = pgTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});

@@ -71,6 +71,7 @@ export default function UserHomePage() {
   const [musicTracks, setMusicTracks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [musicMuted, setMusicMuted] = useState(false);
   const [currentTrackIdx, setCurrentTrackIdx] = useState(-1);
+  const [musicVolume, setMusicVolume] = useState(0.3);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const musicIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -90,6 +91,21 @@ export default function UserHomePage() {
       } catch (e) { /* silent */ }
     };
     fetchMusic();
+
+    // Fetch volume setting
+    const fetchVolume = async () => {
+      try {
+        const res = await fetch("/api/admin/settings?key=musicVolume");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value !== null) {
+            const v = parseFloat(data.value);
+            if (!isNaN(v) && v >= 0 && v <= 1) setMusicVolume(v);
+          }
+        }
+      } catch (e) { /* silent */ }
+    };
+    fetchVolume();
   }, []);
 
   // Music cycling every 15 seconds
@@ -121,9 +137,17 @@ export default function UserHomePage() {
     if (!audio) return;
     
     audio.src = track.url;
-    audio.volume = 0.3;
+    audio.volume = musicVolume;
     audio.play().catch(() => {});
-  }, [currentTrackIdx, musicTracks]);
+  }, [currentTrackIdx, musicTracks, musicVolume]);
+
+  // Update volume immediately when setting changes (even mid-track)
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = musicVolume;
+    }
+  }, [musicVolume]);
 
   const toggleMusic = () => {
     setMusicMuted((prev) => {
