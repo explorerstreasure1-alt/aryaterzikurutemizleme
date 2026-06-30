@@ -655,9 +655,9 @@ export default function UserHomePage() {
       <header className={`sticky top-0 z-40 backdrop-blur-md border-b transition-all ${darkMode ? "bg-slate-900/90 border-teal-900" : "bg-white/90 border-teal-100"}`}>
         <div className="max-w-6xl mx-auto px-3 md:px-4 py-3 md:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 md:space-x-3 min-w-0">
-            <div className="bg-teal-600 text-white p-2 md:p-2.5 rounded-2xl shadow-md flex items-center justify-center needle-logo shrink-0">
+            <div className="bg-teal-600 text-white p-1.5 md:p-2 rounded-2xl shadow-md flex items-center justify-center needle-logo shrink-0">
               {/* Needle + Golden Spiral Logo */}
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" color="currentColor">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-9 h-9 md:w-11 md:h-11" color="currentColor">
                 {/* Thread behind needle (thin line) */}
                 <path d="M12 5.5 C15.5 4.5 18 7 17.5 11 C17 14.5 13.5 16.5 10.5 15 C8 14 6.5 11.5 7 9" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
                 {/* Needle body with eyelet cutout */}
