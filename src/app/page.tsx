@@ -69,7 +69,7 @@ export default function UserHomePage() {
 
   // Background music state
   const [musicTracks, setMusicTracks] = useState<{ id: number; name: string; url: string }[]>([]);
-  const [musicMuted, setMusicMuted] = useState(false);
+  const [musicMuted, setMusicMuted] = useState(true);
   const [currentTrackIdx, setCurrentTrackIdx] = useState(-1);
   const [musicVolume, setMusicVolume] = useState(0.3);
   const audioRef = useRef<HTMLAudioElement | null>(null);
