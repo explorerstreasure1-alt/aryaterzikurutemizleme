@@ -656,11 +656,18 @@ export default function UserHomePage() {
         <div className="max-w-6xl mx-auto px-3 md:px-4 py-3 md:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 md:space-x-3 min-w-0">
             <div className="bg-teal-600 text-white p-2 md:p-2.5 rounded-2xl shadow-md flex items-center justify-center needle-logo shrink-0">
-              {/* Needle/Pin Logo */}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 md:w-6 md:h-6">
-                <path d="M10 6L20 16L8 22L6 20L2 18L10 6Z" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M10 6L16 2L20 6L18 10" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="8" cy="18" r="1.5" fill="currentColor" stroke="none"/>
+              {/* Needle + Thread Logo */}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-6 md:h-6">
+                {/* Needle body */}
+                <path d="M10 4L18 20" />
+                {/* Needle point */}
+                <path d="M18 20L16 17" />
+                {/* Needle eye */}
+                <circle cx="10" cy="6" r="2" />
+                {/* Thread going through eye */}
+                <path d="M8 6C4 4 3 10 7 12C10 14 13 10 11 8" />
+                {/* Thread tail */}
+                <path d="M8 6C6 3 8 1 11 2" />
               </svg>
             </div>
             <div className="min-w-0">

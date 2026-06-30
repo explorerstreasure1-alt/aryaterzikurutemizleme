@@ -24,10 +24,14 @@ import {
   Settings,
   HelpCircle,
   AlertCircle,
-  Music
+  Music,
+  Image
 } from "lucide-react";
 import { getWhatsAppUrl, ARYA_WHATSAPP_PHONE } from "../utils";
 import ImageUpload from "./ImageUpload";
+import MusicUpload from "./MusicUpload";
+import AdminCharts from "./AdminCharts";
+import AdminImageManager from "./AdminImageManager";
 
 // Types
 interface Campaign {
@@ -104,7 +108,7 @@ export default function AdminControlCenter() {
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Tab management
-  const [activeTab, setActiveTab] = useState<"dashboard" | "campaigns" | "participations" | "winners" | "music">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "campaigns" | "participations" | "winners" | "music" | "images">("dashboard");
 
   // Data logs state
   const [campaignsList, setCampaignsList] = useState<Campaign[]>([]);
@@ -188,6 +192,36 @@ export default function AdminControlCenter() {
     }
   };
 
+  /** Called by MusicUpload after file upload completes */
+  const handleMusicFileUploaded = (name: string, url: string) => {
+    // Auto-fill name if empty
+    if (!musicName.trim()) {
+      setMusicName(name);
+    }
+    setMusicUrl(url);
+    // Auto-submit the form
+    setAddingMusic(true);
+    setMusicError(null);
+    fetch("/api/admin/music", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name, url: url })
+    }).then(async (res) => {
+      if (!res.ok) {
+        const data = await res.json();
+        setMusicError(data.error || "Müzik eklenemedi.");
+      } else {
+        setMusicName("");
+        setMusicUrl("");
+        fetchMusic();
+      }
+    }).catch(() => {
+      setMusicError("Bağlantı hatası.");
+    }).finally(() => {
+      setAddingMusic(false);
+    });
+  };
+
   const handleDeleteMusic = async (id: number) => {
     if (!confirm("Bu müziği silmek istediğinize emin misiniz?")) return;
     try {
@@ -195,6 +229,19 @@ export default function AdminControlCenter() {
       if (res.ok) fetchMusic();
     } catch (err) {
       console.error("Müzik silinemedi:", err);
+    }
+  };
+
+  const handleToggleMusic = async (id: number, currentActive: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/music/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: !currentActive })
+      });
+      if (res.ok) fetchMusic();
+    } catch (err) {
+      console.error("Müzik durumu değiştirilemedi:", err);
     }
   };
 
@@ -655,6 +702,13 @@ export default function AdminControlCenter() {
             >
               <Music className="w-4 h-4" /> Müzik Yönetimi
             </button>
+
+            <button
+              onClick={() => { setActiveTab("images"); setIsCreating(false); }}
+              className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 btn-base ${activeTab === "images" ? "bg-teal-600 text-white shadow-md shadow-teal-600/10" : "text-slate-600 hover:bg-teal-50"}`}
+            >
+              <Image className="w-4 h-4" /> Görseller
+            </button>
           </div>
 
           <div className="bg-amber-50 rounded-2xl p-5 border border-amber-200/50 space-y-3">
@@ -717,6 +771,13 @@ export default function AdminControlCenter() {
                 </div>
 
               </div>
+
+              {/* CHARTS SECTION */}
+              <AdminCharts
+                participations={participationsList}
+                spinners={winnersList}
+                campaigns={campaignsList}
+              />
 
               {/* RECENT NOTIFICATIONS SIMULATOR (TELEGRAM DETECTED) */}
               <div className="bg-slate-900 rounded-3xl p-6 text-white border border-slate-800 space-y-4 shadow-xl">
@@ -1411,16 +1472,13 @@ export default function AdminControlCenter() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-black uppercase tracking-wider mb-1 opacity-80">Müzik URL (mp3, wav, ogg)</label>
-                    <input
-                      type="url"
-                      required
-                      value={musicUrl}
-                      onChange={(e) => setMusicUrl(e.target.value)}
-                      placeholder="https://example.com/muzik.mp3"
-                      className="w-full px-4 py-2.5 rounded-xl border border-teal-500/10 bg-slate-50 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-bold input-field"
-                    />
-                    <p className="text-[10px] opacity-60 mt-1">Vercel Blob veya herkese açık müzik dosyası URL&rsquo;si girin.</p>
+                    <label className="block text-[11px] font-black uppercase tracking-wider mb-1 opacity-80">Müzik Dosyası Yükle (mp3, wav, ogg)</label>
+                    <MusicUpload onUploadComplete={handleMusicFileUploaded} />
+                    {musicUrl && (
+                      <p className="text-[10px] text-teal-600 font-semibold mt-1 flex items-center gap-1">
+                        <Check className="w-3 h-3" /> Dosya yüklendi
+                      </p>
+                    )}
                   </div>
                   <button
                     type="submit"
@@ -1461,11 +1519,17 @@ export default function AdminControlCenter() {
                             </a>
                           </td>
                           <td className="p-4">
-                            <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold inline-block ${
-                              track.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"
-                            }`}>
+                            <button
+                              onClick={() => handleToggleMusic(track.id, track.active)}
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold transition-all cursor-pointer btn-base ${
+                                track.active
+                                  ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                              }`}
+                              title={track.active ? "Pasif Yap" : "Aktif Yap"}
+                            >
                               {track.active ? "Aktif" : "Pasif"}
-                            </span>
+                            </button>
                           </td>
                           <td className="p-4 text-slate-400 text-[10px]">
                             {new Date(track.createdAt).toLocaleString("tr-TR")}
@@ -1492,6 +1556,11 @@ export default function AdminControlCenter() {
               </div>
 
             </div>
+          )}
+
+          {/* VIEW 6: IMAGE MANAGEMENT */}
+          {activeTab === "images" && (
+            <AdminImageManager />
           )}
 
         </main>

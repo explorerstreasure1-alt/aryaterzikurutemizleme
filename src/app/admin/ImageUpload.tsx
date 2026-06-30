@@ -286,7 +286,6 @@ export default function ImageUpload({
           type="file"
           accept="image/jpeg,image/png,image/webp,image/gif"
           multiple
-          capture="environment"
           onChange={handleFileSelect}
           className="hidden"
         />
