@@ -549,11 +549,14 @@ export default function AdminControlCenter() {
           
           <div className="bg-gradient-to-br from-teal-600 to-teal-800 p-8 text-white text-center space-y-2">
             <div className="bg-white/20 w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-2 backdrop-blur-sm">
-              {/* Needle/Pin Logo */}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7 text-white">
-                <path d="M10 6L20 16L8 22L6 20L2 18L10 6Z" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M10 6L16 2L20 6L18 10" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="8" cy="18" r="1.5" fill="currentColor" stroke="none"/>
+              {/* Needle + Golden Spiral Logo */}
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-white">
+                {/* Thread behind needle */}
+                <path d="M12 5.5 C15.5 5 18 8 17.5 11.5 C17 14.5 14 16 11 15 C8.5 14 7 11.5 7.5 8.5" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.9" />
+                {/* Needle body with eyelet cutout */}
+                <path fillRule="evenodd" clipRule="evenodd" d="M10 2.5 C10 1.8 14 1.8 14 2.5 L14 6 L13.2 6 L14 6.8 L14 17.5 Q14 19 12 19.5 Q10 19 10 17.5 L10 6.8 L10.8 6 L10 6 Z M11.2 3.5 L12.8 3.5 L12.8 5.2 L11.2 5.2 Z" fill="currentColor" />
+                {/* Thread in front (crossing needle) */}
+                <path d="M7.5 8.5 C7.8 6 10 5 12 5.5" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.9" />
               </svg>
             </div>
             <h2 className="text-2xl font-black tracking-tight">Arya Kontrol Merkezi</h2>
@@ -620,11 +623,14 @@ export default function AdminControlCenter() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
             <div className="bg-teal-600 p-2 rounded-xl flex items-center justify-center">
-              {/* Needle/Pin Logo */}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-white">
-                <path d="M10 6L20 16L8 22L6 20L2 18L10 6Z" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M10 6L16 2L20 6L18 10" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="8" cy="18" r="1.5" fill="currentColor" stroke="none"/>
+              {/* Needle + Golden Spiral Logo */}
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white">
+                {/* Thread behind needle */}
+                <path d="M12 5.5 C15.5 5 18 8 17.5 11.5 C17 14.5 14 16 11 15 C8.5 14 7 11.5 7.5 8.5" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.9" />
+                {/* Needle body with eyelet cutout */}
+                <path fillRule="evenodd" clipRule="evenodd" d="M10 2.5 C10 1.8 14 1.8 14 2.5 L14 6 L13.2 6 L14 6.8 L14 17.5 Q14 19 12 19.5 Q10 19 10 17.5 L10 6.8 L10.8 6 L10 6 Z M11.2 3.5 L12.8 3.5 L12.8 5.2 L11.2 5.2 Z" fill="currentColor" />
+                {/* Thread in front (crossing needle) */}
+                <path d="M7.5 8.5 C7.8 6 10 5 12 5.5" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.9" />
               </svg>
             </div>
             <div>

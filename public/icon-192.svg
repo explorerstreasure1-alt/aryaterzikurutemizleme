@@ -4,14 +4,40 @@
       <stop offset="0%" stop-color="#0d9488"/>
       <stop offset="100%" stop-color="#0f766e"/>
     </linearGradient>
+    <mask id="eyelet-192">
+      <rect width="192" height="192" fill="white" />
+      <ellipse cx="96" cy="34" rx="10" ry="13" fill="black" />
+    </mask>
   </defs>
+  
+  <!-- Background -->
   <rect width="192" height="192" rx="40" fill="url(#bg)"/>
+  
   <g transform="translate(96,96)">
-    <!-- Pin/needle body -->
-    <path d="M-10,-55 L30,-5 L-20,35" fill="none" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-    <!-- Pin head -->
-    <circle cx="-15" cy="38" r="8" fill="#fbbf24"/>
-    <!-- Thread -->
-    <path d="M25,5 Q50,-20 40,-40" fill="none" stroke="#fcd34d" stroke-width="3" stroke-linecap="round"/>
+    <!-- Thread / Golden Spiral (behind the needle) -->
+    <!-- Starts at eyelet, sweeps right → down → left (behind needle) → up-right (crossing in front) -->
+    <path d="M 0 -62 
+             C 45 -68 65 -40 60 -5 
+             C 55 30 30 50 -5 45 
+             C -35 40 -50 15 -40 -10"
+          stroke="white" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.85"/>
+    
+    <!-- Needle body (with eyelet cutout via mask) -->
+    <path d="M -14 -90 
+             C -14 -95 14 -95 14 -90 
+             L 14 -50 
+             C 18 -42 18 -30 14 -25 
+             L 14 40 
+             Q 14 62 0 68 
+             Q -14 62 -14 40 
+             L -14 -25 
+             C -18 -30 -18 -42 -14 -50 Z" 
+          fill="white" mask="url(#eyelet-192)"/>
+    
+    <!-- Thread / Golden Spiral (in front of the needle) -->
+    <!-- Crosses back over the needle and terminates -->
+    <path d="M -40 -10 
+             C -30 -35 -5 -45 15 -42 C 25 -40 30 -38 35 -33" 
+          stroke="white" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.85"/>
   </g>
 </svg>

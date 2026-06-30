@@ -656,18 +656,14 @@ export default function UserHomePage() {
         <div className="max-w-6xl mx-auto px-3 md:px-4 py-3 md:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2 md:space-x-3 min-w-0">
             <div className="bg-teal-600 text-white p-2 md:p-2.5 rounded-2xl shadow-md flex items-center justify-center needle-logo shrink-0">
-              {/* Needle + Thread Logo */}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-6 md:h-6">
-                {/* Needle body */}
-                <path d="M10 4L18 20" />
-                {/* Needle point */}
-                <path d="M18 20L16 17" />
-                {/* Needle eye */}
-                <circle cx="10" cy="6" r="2" />
-                {/* Thread going through eye */}
-                <path d="M8 6C4 4 3 10 7 12C10 14 13 10 11 8" />
-                {/* Thread tail */}
-                <path d="M8 6C6 3 8 1 11 2" />
+              {/* Needle + Golden Spiral Logo */}
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6">
+                {/* Thread behind needle */}
+                <path d="M12 5.5 C15.5 5 18 8 17.5 11.5 C17 14.5 14 16 11 15 C8.5 14 7 11.5 7.5 8.5" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.9" />
+                {/* Needle body with eyelet cutout */}
+                <path fillRule="evenodd" clipRule="evenodd" d="M10 2.5 C10 1.8 14 1.8 14 2.5 L14 6 L13.2 6 L14 6.8 L14 17.5 Q14 19 12 19.5 Q10 19 10 17.5 L10 6.8 L10.8 6 L10 6 Z M11.2 3.5 L12.8 3.5 L12.8 5.2 L11.2 5.2 Z" fill="currentColor" />
+                {/* Thread in front (crossing needle) */}
+                <path d="M7.5 8.5 C7.8 6 10 5 12 5.5" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.9" />
               </svg>
             </div>
             <div className="min-w-0">
