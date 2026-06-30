@@ -744,24 +744,24 @@ export default function UserHomePage() {
           </p>
 
           {/* FILTER TABS */}
-          <div className="flex flex-wrap items-center justify-center gap-2 max-w-md mx-auto p-1.5 rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-teal-500/10">
+          <div className="flex flex-nowrap items-center justify-center gap-1 max-w-md mx-auto p-1.5 rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-teal-500/10">
             <button
               onClick={() => setFilter("all")}
-              className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all btn-base ${filter === "all" ? "bg-teal-600 text-white shadow-md" : "text-slate-500 hover:text-teal-600 dark:text-slate-400"}`}
+              className={`flex-1 px-2 md:px-4 py-2 rounded-xl text-[10px] md:text-xs font-bold transition-all btn-base truncate ${filter === "all" ? "bg-teal-600 text-white shadow-md" : "text-slate-500 hover:text-teal-600 dark:text-slate-400"}`}
             >
               Tüm Kampanyalar
             </button>
             <button
               onClick={() => setFilter("ongoing")}
-              className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all btn-base ${filter === "ongoing" ? "bg-teal-600 text-white shadow-md" : "text-slate-500 hover:text-teal-600 dark:text-slate-400"}`}
+              className={`flex-1 px-2 md:px-4 py-2 rounded-xl text-[10px] md:text-xs font-bold transition-all btn-base truncate ${filter === "ongoing" ? "bg-teal-600 text-white shadow-md" : "text-slate-500 hover:text-teal-600 dark:text-slate-400"}`}
             >
               Aktif Olanlar
             </button>
             <button
               onClick={() => setFilter("ending_soon")}
-              className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all btn-base flex items-center justify-center gap-1 ${filter === "ending_soon" ? "bg-amber-500 text-white shadow-md" : "text-slate-500 hover:text-amber-500 dark:text-slate-400"}`}
+              className={`flex-1 px-2 md:px-4 py-2 rounded-xl text-[10px] md:text-xs font-bold transition-all btn-base truncate flex items-center justify-center gap-1 ${filter === "ending_soon" ? "bg-amber-500 text-white shadow-md" : "text-slate-500 hover:text-amber-500 dark:text-slate-400"}`}
             >
-              <Clock className="w-3 h-3 animate-spin" /> Son 48 Saat!
+              <Clock className="w-3 h-3 animate-spin shrink-0" /> <span className="truncate">Son 48 Saat!</span>
             </button>
           </div>
         </div>
