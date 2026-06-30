@@ -25,7 +25,8 @@ import {
   HelpCircle,
   AlertCircle,
   Music,
-  Image
+  Image,
+  Download
 } from "lucide-react";
 import { getWhatsAppUrl, ARYA_WHATSAPP_PHONE } from "../utils";
 import ImageUpload from "./ImageUpload";
@@ -1508,7 +1509,7 @@ export default function AdminControlCenter() {
                       <tr className="bg-slate-50 text-slate-500 font-extrabold border-b">
                         <th className="p-4">ID</th>
                         <th className="p-4">Müzik Adı</th>
-                        <th className="p-4">URL</th>
+                        <th className="p-4">Önizleme</th>
                         <th className="p-4">Durum</th>
                         <th className="p-4">Eklenme Tarihi</th>
                         <th className="p-4 text-right">İşlem</th>
@@ -1519,10 +1520,18 @@ export default function AdminControlCenter() {
                         <tr key={track.id} className="hover:bg-slate-50/50">
                           <td className="p-4 text-slate-400">{track.id}</td>
                           <td className="p-4 font-black text-slate-900">{track.name}</td>
-                          <td className="p-4 max-w-[200px] truncate text-teal-600">
-                            <a href={track.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                              {track.url}
-                            </a>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <audio src={track.url} controls preload="none" className="h-8 w-36 sm:w-48" />
+                              <a
+                                href={track.url}
+                                download={track.name}
+                                className="p-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-600 transition-all shrink-0"
+                                title="İndir"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
                           </td>
                           <td className="p-4">
                             <button
