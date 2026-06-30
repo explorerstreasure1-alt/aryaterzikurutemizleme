@@ -66,14 +66,17 @@ export default function UserHomePage() {
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [visitorId, setVisitorId] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
-
   // Background music state
   const [musicTracks, setMusicTracks] = useState<{ id: number; name: string; url: string }[]>([]);
-  const [musicMuted, setMusicMuted] = useState(true);
+  const [musicPlaying, setMusicPlaying] = useState(false);
   const [currentTrackIdx, setCurrentTrackIdx] = useState(-1);
   const [musicVolume, setMusicVolume] = useState(0.3);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const musicIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Refs to avoid stale closures in event callbacks and effects
+  const musicPlayingRef = useRef(false);
+  const musicTracksRef = useRef(musicTracks);
+  musicPlayingRef.current = musicPlaying;
+  musicTracksRef.current = musicTracks;
 
   // Fetch music tracks from admin
   useEffect(() => {
@@ -108,38 +111,37 @@ export default function UserHomePage() {
     fetchVolume();
   }, []);
 
-  // Music cycling every 15 seconds
+  // Auto-advance to next track when current one finishes
+  const handleTrackEnded = useCallback(() => {
+    const len = musicTracksRef.current.length;
+    if (len === 0) return;
+    setCurrentTrackIdx((prev) => (prev + 1) % len);
+  }, []);
+
+  // Attach ended event listener once
   useEffect(() => {
-    if (musicTracks.length === 0) return;
-    if (musicMuted) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.addEventListener("ended", handleTrackEnded);
+    return () => audio.removeEventListener("ended", handleTrackEnded);
+  }, [handleTrackEnded]);
 
-    const playNext = () => {
-      setCurrentTrackIdx((prev) => {
-        const next = (prev + 1) % musicTracks.length;
-        return next;
-      });
-    };
-
-    // Start cycle
-    musicIntervalRef.current = setInterval(playNext, 15000);
-    return () => {
-      if (musicIntervalRef.current) clearInterval(musicIntervalRef.current);
-    };
-  }, [musicTracks, musicMuted]);
-
-  // Play audio when track changes
+  // Load audio when current track index changes
   useEffect(() => {
     if (currentTrackIdx < 0 || musicTracks.length === 0) return;
     const track = musicTracks[currentTrackIdx];
     if (!track) return;
-    
+
     const audio = audioRef.current;
     if (!audio) return;
-    
+
     audio.src = track.url;
     audio.volume = musicVolume;
-    audio.play().catch(() => {});
-  }, [currentTrackIdx, musicTracks, musicVolume]);
+
+    if (musicPlayingRef.current) {
+      audio.play().catch(() => {});
+    }
+  }, [currentTrackIdx]);
 
   // Update volume immediately when setting changes (even mid-track)
   useEffect(() => {
@@ -149,24 +151,24 @@ export default function UserHomePage() {
     }
   }, [musicVolume]);
 
+  // Play/pause toggle (always triggered by user gesture → autoplay allowed)
   const toggleMusic = () => {
-    setMusicMuted((prev) => {
-      const next = !prev;
-      if (next) {
-        // Mute → pause
-        audioRef.current?.pause();
-        if (musicIntervalRef.current) clearInterval(musicIntervalRef.current);
-      } else {
-        // Unmute → start playing from where we left off
-        if (musicTracks.length > 0) {
-          audioRef.current?.play().catch(() => {});
-          musicIntervalRef.current = setInterval(() => {
-            setCurrentTrackIdx((prev) => (prev + 1) % musicTracks.length);
-          }, 15000);
-        }
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (musicPlaying) {
+      audio.pause();
+      setMusicPlaying(false);
+    } else {
+      setMusicPlaying(true);
+      if (currentTrackIdx >= 0) {
+        // Resume current track
+        audio.play().catch(() => {});
+      } else if (musicTracks.length > 0) {
+        // Load first track (playback triggered via track-change effect)
+        setCurrentTrackIdx(0);
       }
-      return next;
-    });
+    }
   };
 
   // Carousel slider indexes
@@ -710,10 +712,10 @@ export default function UserHomePage() {
             {musicTracks.length > 0 && (
               <button
                 onClick={toggleMusic}
-                className={`p-2 md:p-2.5 rounded-xl border transition-all btn-base ${musicMuted ? "bg-rose-50/50 border-rose-200 text-rose-500 hover:bg-rose-100/50" : "bg-teal-50/50 border-teal-100 text-teal-600 hover:bg-teal-100/50"}`}
-                title={musicMuted ? "Sesi Aç" : "Sesi Kapat"}
+                className={`p-2 md:p-2.5 rounded-xl border transition-all btn-base ${musicPlaying ? "bg-teal-50/50 border-teal-100 text-teal-600 hover:bg-teal-100/50" : "bg-rose-50/50 border-rose-200 text-rose-500 hover:bg-rose-100/50"}`}
+                title={musicPlaying ? "Müziği Durdur" : "Müziği Başlat"}
               >
-                {musicMuted ? <VolumeX className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <Volume2 className="w-3.5 h-3.5 md:w-4 md:h-4" />}
+                {musicPlaying ? <Volume2 className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <VolumeX className="w-3.5 h-3.5 md:w-4 md:h-4" />}
               </button>
             )}
 
