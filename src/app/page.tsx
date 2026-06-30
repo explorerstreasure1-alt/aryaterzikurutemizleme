@@ -657,13 +657,13 @@ export default function UserHomePage() {
           <div className="flex items-center space-x-2 md:space-x-3 min-w-0">
             <div className="bg-teal-600 text-white p-2 md:p-2.5 rounded-2xl shadow-md flex items-center justify-center needle-logo shrink-0">
               {/* Needle + Golden Spiral Logo */}
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6">
-                {/* Thread behind needle */}
-                <path d="M12 5.5 C15.5 5 18 8 17.5 11.5 C17 14.5 14 16 11 15 C8.5 14 7 11.5 7.5 8.5" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.9" />
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" color="currentColor">
+                {/* Thread behind needle (thin line) */}
+                <path d="M12 5.5 C15.5 4.5 18 7 17.5 11 C17 14.5 13.5 16.5 10.5 15 C8 14 6.5 11.5 7 9" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
                 {/* Needle body with eyelet cutout */}
-                <path fillRule="evenodd" clipRule="evenodd" d="M10 2.5 C10 1.8 14 1.8 14 2.5 L14 6 L13.2 6 L14 6.8 L14 17.5 Q14 19 12 19.5 Q10 19 10 17.5 L10 6.8 L10.8 6 L10 6 Z M11.2 3.5 L12.8 3.5 L12.8 5.2 L11.2 5.2 Z" fill="currentColor" />
+                <path fillRule="evenodd" clipRule="evenodd" d="M11 2.5 Q12 2 13 2.5 L13 5.5 L12.5 5.5 L12.5 17 Q12.5 18.5 12 19 Q11.5 18.5 11.5 17 L11.5 5.5 L11 5.5 Z M11.3 3.5 L12.7 3.5 L12.7 5 L11.3 5 Z" fill="currentColor" />
                 {/* Thread in front (crossing needle) */}
-                <path d="M7.5 8.5 C7.8 6 10 5 12 5.5" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.9" />
+                <path d="M7 9 C7.5 6.5 9.5 5.5 11.5 5.8" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
               </svg>
             </div>
             <div className="min-w-0">
